@@ -7,7 +7,7 @@ Proyecto base (scaffold) para el videojuego en Python.
 python -m src
 ```
 
-## Estructura
+## Estructuraa
 - `src/`: código fuente del juego
 - `data/`: datos locales de respaldo (mapa/pedidos/clima)
 - `api_cache/`: caché de respuestas de la API
