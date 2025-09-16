@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "width": 10,
+  "height": 8,
+  "legend": {
+    "R": {
+      "blocked": false,
+      "surface_weight": 1.0,
+      "sprite": "road.png"
+    },
+    "B": {
+      "blocked": true,
+      "surface_weight": 0.0,
+      "sprite": "building.png"
+    },
+    "P": {
+      "blocked": false,
+      "surface_weight": 1.2,
+      "sprite": "park.png"
+    },
+    "S": {
+      "blocked": false,
+      "surface_weight": 0.8,
+      "sprite": "sand.png"
+    }
+  },
+  "tiles": [
+    "RRRRRRRRRR",
+    "RPPPRRRRPR",
+    "RPRRBBRRPR",
+    "RPRRBBRRPR",
+    "RPRRRRRRPR",
+    "RPRRPPPRPR",
+    "RPRRRRRRPR",
+    "RRRRRRRRRR"
+  ],
+  "goal": {
+    "x": 8,
+    "y": 1
+  }
+}
