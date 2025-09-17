@@ -1,7 +1,12 @@
 # Global tunables
-WINDOW_W, WINDOW_H = 960, 640
-TILE_SIZE = 64
+TILE_SIZE = 15
 FPS = 60
+
+SPRITES = {
+    "C": "street.png",
+    "B": "building.png",
+    "P": "park.png",
+}
 
 # Movement & stamina
 BASE_SPEED = 3.0  # celdas/seg

@@ -56,9 +56,9 @@ def _color_for_symbol(sym: str, legend: dict) -> tuple:
     if name == "street":
         return (110, 110, 110)
     if name == "building":
-        return (55, 55, 75)
+        return (139, 0, 0)
     if name == "park":
-        return (70, 140, 70)
+        return (70, 70, 0)
     return (90, 120, 160)
 
 
@@ -89,6 +89,8 @@ class MapLoader:
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         api = APIClient(base_dir)
         data = api.get_map()
+        #print("DEBUG - Datos del mapa cargados:", json.dumps(data, indent=2))
+        #data = api.get_map_local()
         self._load_from_payload(data)
         self._prepare_surfaces()
         return self
@@ -146,17 +148,23 @@ class MapLoader:
         self._w, self._h = self.meta["width"], self.meta["height"]
 
     def _prepare_surfaces(self):
-        """
-        Prepara superficies por símbolo según legend (colores por tipo).
-        """
         ts = settings.TILE_SIZE
-        symbols = set()
-        for row in self.tiles:
-            for sym in row:
-                symbols.add(sym)
+        symbols = {sym for row in self.tiles for sym in row}
 
         self.tile_surf = {}
+        assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "tiles")
+
         for sym in symbols:
+            sprite_file = settings.SPRITES.get(sym)
+            if sprite_file:
+                path = os.path.join(assets_dir, sprite_file)
+                if os.path.exists(path):
+                    img = pygame.image.load(path)#.convert_alpha()
+                    img = pygame.transform.scale(img, (ts, ts))
+                    self.tile_surf[sym] = img
+                    continue
+
+            # fallback a color si no hay sprite
             surf = pygame.Surface((ts, ts))
             surf.fill(_color_for_symbol(sym, self.legend))
             self.tile_surf[sym] = surf

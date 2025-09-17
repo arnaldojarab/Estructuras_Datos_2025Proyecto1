@@ -53,14 +53,36 @@ class APIClient:
         }
         """
         try:
-            return self._fetch_json(API_CITY_MAP_URL)
+            data = self._fetch_json(API_CITY_MAP_URL)
+
+            # Guardar copia local actualizada
+            path = os.path.join(self.base_dir, "data", "ciudad.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            return data
         except (URLError, HTTPError, TimeoutError, json.JSONDecodeError):
             # Fallback local
             return self._load_local("ciudad")
+        """
+        try:
+            data = self._fetch_json(API_CITY_MAP_URL)
+        except (URLError, HTTPError, TimeoutError, json.JSONDecodeError):
+            data = self._load_local("ciudad")
+
+
+        return data
+        """
+        
 
     # Placeholders por si luego agregas más endpoints:
     def get_jobs(self) -> dict:
+        
         return self._load_local("pedidos")
 
     def get_weather(self) -> dict:
         return self._load_local("weather")
+    
+    def get_map_local(self) -> dict:
+        return self._load_local("ciudad")
+        

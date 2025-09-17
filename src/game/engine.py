@@ -6,11 +6,20 @@ from .player import Player
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((settings.WINDOW_W, settings.WINDOW_H))
-        pygame.display.set_caption("Courier Quest (scaffold)")
-        self.clock = pygame.time.Clock()
+
+        # 1. Cargar mapa primero
         self.map = MapLoader().load_default()
-        self.player = Player((1,1))
+
+        # 2. Calcular dimensiones reales de la ventana
+        window_w = self.map.width * settings.TILE_SIZE
+        window_h = self.map.height * settings.TILE_SIZE
+
+        # 3. Crear ventana con esas dimensiones
+        self.screen = pygame.display.set_mode((window_w, window_h))
+        pygame.display.set_caption("Courier Quest (scaffold)")
+
+        self.clock = pygame.time.Clock()
+        self.player = Player((1, 1))
 
     def run(self):
         running = True
