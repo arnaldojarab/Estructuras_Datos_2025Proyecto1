@@ -10,6 +10,10 @@ API_CITY_MAP_URL = (
     "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/map"
 )
 
+API_CITY_WEATHER_URL = (
+    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weather"
+)
+
 
 class APIClient:
     def __init__(self, base_dir: str):
@@ -81,7 +85,23 @@ class APIClient:
         return self._load_local("pedidos")
 
     def get_weather(self) -> dict:
-        return self._load_local("weather")
+
+        try:
+            data = self._fetch_json(API_CITY_WEATHER_URL)
+
+            # Guardar copia local actualizada
+            path = os.path.join(self.base_dir, "data", "weather.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            return data
+        except (URLError, HTTPError, TimeoutError, json.JSONDecodeError):
+            # Fallback local
+            return self._load_local("weather")
+
+
+
+        #return self._load_local("weather")
     
     def get_map_local(self) -> dict:
         return self._load_local("ciudad")

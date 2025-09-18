@@ -1,6 +1,7 @@
 # Entry point
 from .game.engine import Game
 
+
 def main():
     Game().run()
 
