@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run CourierQuest (module: src)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src", // <- equivalente a: python -m src
+      "cwd": "${workspaceFolder}", // <- importantísimo
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

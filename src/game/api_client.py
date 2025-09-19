@@ -4,6 +4,7 @@ import json
 import os
 import urllib.request
 from urllib.error import URLError, HTTPError
+from typing import Any, Dict, List
 
 
 API_CITY_MAP_URL = (
@@ -12,6 +13,10 @@ API_CITY_MAP_URL = (
 
 API_CITY_WEATHER_URL = (
     "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weather"
+)
+
+API_JOBS_URL = (
+    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/jobs"
 )
 
 
@@ -68,21 +73,77 @@ class APIClient:
         except (URLError, HTTPError, TimeoutError, json.JSONDecodeError):
             # Fallback local
             return self._load_local("ciudad")
-        """
+
+
+    def _normalize_jobs(self, data: Any) -> List[Dict[str, Any]]:
+      """
+      Devuelve SIEMPRE list[dict] con jobs, manejando distintos wrappers.
+      """
+      # Caso 1: ya es lista de jobs
+      if isinstance(data, list):
+          return data
+
+      # Caso 2: hay un wrapper dict
+      if isinstance(data, dict):
+          # Desempaqueta común: muchos endpoints ponen todo bajo "data"
+          payload = data.get("data", data)
+
+          # 2a) si 'data' ya es lista -> listo
+          if isinstance(payload, list):
+              return payload
+
+          # 2b) si 'data' es dict -> busca claves típicas
+          if isinstance(payload, dict):
+              for key in ("jobs", "pedidos", "orders", "items", "results"):
+                  val = payload.get(key)
+                  if isinstance(val, list):
+                      return val
+
+              # 2c) ¿viene un solo job como dict?
+              required = {"id","pickup","dropoff","payout","deadline","weight","priority","release_time"}
+              if required.issubset(set(payload.keys())):
+                  return [payload]
+
+          # 2d) también intentamos en el dict de primer nivel por si no estaba en 'data'
+          for key in ("jobs", "pedidos", "orders", "items", "results"):
+              val = data.get(key)
+              if isinstance(val, list):
+                  return val
+
+          # 2e) ¿un solo job en el nivel raíz?
+          required = {"id","pickup","dropoff","payout","deadline","weight","priority","release_time"}
+          if required.issubset(set(data.keys())):
+              return [data]
+
+          # Si llegamos aquí, no reconocimos el esquema
+          d_type = type(payload).__name__
+          d_keys = list(payload.keys())[:10] if isinstance(payload, dict) else None
+          raise ValueError(f"Payload de jobs no reconocido: data['data'] tipo={d_type}, keys={d_keys}")
+
+      # Cualquier otro tipo: error
+      raise ValueError(f"Payload de jobs no reconocido: tipo={type(data)}")
+
+    """
+    Cache local: guardamos /data/pedidos.json tal cual lo devuelve el API (sin normalizar) para paridad y depuración.
+    Solo normalizamos al usar como fallback (si falla el API), convirtiendo a list[dict] para consumo uniforme.
+    Resultado: el cache refleja el API real; get_jobs() siempre retorna una lista normalizada.
+    """
+    def get_jobs(self) -> List[Dict[str, Any]]:
         try:
-            data = self._fetch_json(API_CITY_MAP_URL)
+            data = self._fetch_json(API_JOBS_URL)
+            jobs = self._normalize_jobs(data)              # ← siempre list[dict]
+
+            # Guardar copia local actualizada
+            path = os.path.join(self.base_dir, "data", "pedidos.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            return jobs
         except (URLError, HTTPError, TimeoutError, json.JSONDecodeError):
-            data = self._load_local("ciudad")
+          local_raw = self._load_local("pedidos")
+          return self._normalize_jobs(local_raw)
+    
 
-
-        return data
-        """
-        
-
-    # Placeholders por si luego agregas más endpoints:
-    def get_jobs(self) -> dict:
-        
-        return self._load_local("pedidos")
 
     def get_weather(self) -> dict:
 

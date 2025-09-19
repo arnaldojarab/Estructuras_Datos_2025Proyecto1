@@ -9,6 +9,7 @@ from .util import format_mmss
 from .util import CountdownTimer
 
 from .weather import WeatherManager
+from .job_loader import JobLoader
 
 class GameState(Enum):
     MENU = auto()
@@ -42,6 +43,15 @@ class Game:
 
         # 6) Clima
         self._init_weather()
+
+        # 7) Pedidos
+        self._init_orders()
+
+    def _init_orders(self):
+        """Configura el sistema de los pedidos."""
+        self.jobs = JobLoader()          # prepara cliente y contenedor
+        self.jobs.load_from_api()        # fetch inicial (bloquea lo justo o hazlo en pantalla de carga)
+        self.orders = self.jobs.create_order_manager()
 
     def _init_weather(self):
         """Configura el sistema de clima."""
