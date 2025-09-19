@@ -71,6 +71,7 @@ class Game:
             # Dibuja mundo de fondo siempre:
             self.map.draw(self.screen)
             self.player.draw(self.screen)
+            self.player.draw_stamina(self.screen)
             draw()
 
             pygame.display.flip()
@@ -94,6 +95,13 @@ class Game:
             self.player.grid_pos[0] * settings.TILE_SIZE,
             self.player.grid_pos[1] * settings.TILE_SIZE,
         ]
+        ts = settings.TILE_SIZE
+        start_cx = 1 * ts + ts // 2
+        start_cy = 1 * ts + ts // 2
+        self.player.x = start_cx
+        self.player.y = start_cy
+
+        
         # Opcional: reiniciar clima al comenzar una nueva run
         self._init_weather()
 
@@ -127,7 +135,8 @@ class Game:
         speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
         dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
         dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
-        self.player.pixel_move(dx, dy)
+        self.player.move_with_collision(dx, dy,self.map)
+        self.player.update(dt)
 
         # 3) Timer de partida
         self.timer.tick(dt)
