@@ -40,7 +40,7 @@ class JobLoader:
         No hace fetch. Usa el catálogo ya cargado.
         """
         om = OrderManager(self)  # self actúa como “repo” (tiene get())
-        om.build_upcoming(self.snapshot_ids())
+        om.fill_release_queue_from_repo()
         return om
 
     def resetJobs(self) -> OrderManager:

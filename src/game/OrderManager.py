@@ -1,170 +1,133 @@
-# src/game/orders.py
 from __future__ import annotations
-import heapq
-from typing import List, Tuple, Optional, Iterable, Literal, Set
+from collections import deque
+from dataclasses import dataclass
+from typing import Deque, List, Optional, Dict
+from .job import Job
 
-OrderKey = Literal["deadline", "priority"]
+@dataclass
+class HistoryEntry:
+    job_id: str
+    accepted: bool
+    onTime: bool = False  # se actualizará a True cuando se entregue a tiempo
 
 class OrderManager:
     """
-    Estructuras de ejecución para una partida (solo IDs).
-    - upcoming_by_release: min-heap (release_time, seq, id)
-    - offers_now:          min-heap (key,          seq, id) donde key = (-priority, deadline)
-    - inventory:           lista de IDs aceptados
-    - history:             lista de IDs entregados
-    - current_id:          ID del job activo (opcional)
+    Estructuras de ejecución (simplificadas):
+      1) release_queue: cola (deque) con IDs ordenados por release_time
+         - Métodos: fill_release_queue_from_repo(), pop_next_job()
+         - Cuando queda vacía, se recarga (repiten los mismos trabajos)
+      2) history: lista de HistoryEntry (accepted, onTime, job_id)
+      3) inventory: lista de IDs aceptados pero no entregados
 
-    'repo' debe exponer: get(job_id) -> Job
-    (JobLoader cumple este contrato).
+    Además:
+      - currentJob_id: ID del job activo
+      - repo: objeto con get(job_id)->Job y snapshot_ids()->list[str] (JobLoader)
     """
 
-    def __init__(self, repo) -> None:  # repo: objeto con get(job_id)->Job
+    def __init__(self, repo) -> None:
         self.repo = repo
 
-        # Heaps / índices
-        self._upcoming_by_release: List[Tuple[int, int, str]] = []
-        self._offers_now: List[Tuple[Tuple, int, str]] = []
-        self._offers_set: Set[str] = set()
+        # 1) Cola de lanzamiento por release_time (IDs)
+        self.release_queue: Deque[str] = deque()
+        self._base_ids_sorted: List[str] = []  # respaldo para recargar cuando se vacíe
 
-        # Contenedores del jugador
-        self._inventory: List[str] = []
-        self._history: List[str] = []
-        self._current_id: Optional[str] = None
+        # 2) Historial
+        self.history: List[HistoryEntry] = []
 
-        # Secuencias para desempates estables
-        self._seq_upcoming = 0
-        self._seq_offers = 0
+        # 3) Inventario (IDs aceptados, aún sin entregar)
+        self.inventory: List[str] = []
 
-        # Invalidaciones perezosas para el heap de ofertas
-        self._invalid_offers: Set[str] = set()
+        # Job actual
+        self.currentJob_id: Optional[str] = None
 
-    # ---------- construcción / reset ----------
-    def build_upcoming(self, ids: Iterable[str]) -> None:
-        """Inicializa todos los índices para una nueva partida."""
-        self._upcoming_by_release.clear()
-        self._offers_now.clear()
-        self._offers_set.clear()
-        self._invalid_offers.clear()
-        self._inventory.clear()
-        self._history.clear()
-        self._current_id = None
-        self._seq_upcoming = 0
-        self._seq_offers = 0
-
-        for jid in ids:
-            job = self.repo.get(jid)
-            heapq.heappush(
-                self._upcoming_by_release,
-                (int(job.release_time), self._seq_upcoming, jid),
-            )
-            self._seq_upcoming += 1
-
-    # ---------- ciclo ----------
-    def tick(self, game_seconds: float) -> None:
+    # ---------- (1) Cola por release_time ----------
+    def fill_release_queue_from_repo(self) -> None:
         """
-        Mueve jobs de upcoming -> offers_now cuando now >= release_time.
-        No decide cuándo abrir pop-ups; solo expone ofertas disponibles.
+        Obtiene todos los jobs del repo, los ordena por release_time ascendente
+        y llena la cola. También guarda ese orden base para recargar cuando se vacíe.
         """
-        while self._upcoming_by_release and self._upcoming_by_release[0][0] <= game_seconds:
-            _, _, jid = heapq.heappop(self._upcoming_by_release)
-            self._push_offer(jid)
+        ids = self.repo.snapshot_ids()  # lista de IDs disponibles
+        ids.sort(key=lambda jid: self.repo.get(jid).release_time)
+        self._base_ids_sorted = ids[:]              # guardamos orden base
+        self.release_queue = deque(ids)             # cola inicial
 
-        self._purge_offers_top()
+    def _reload_release_queue_if_empty(self) -> None:
+        """Si la cola está vacía, recárgala con el orden base (repetición cíclica)."""
+        if not self.release_queue and self._base_ids_sorted:
+            self.release_queue = deque(self._base_ids_sorted)
 
-    # ---------- ofertas ----------
-    def has_offer(self) -> bool:
-        self._purge_offers_top()
-        return bool(self._offers_now)
+    def pop_next_job(self) -> Optional[Job]:
+        """
+        Saca el primer ID de la cola y retorna el Job completo.
+        Si la cola está vacía, se recarga con el orden base y vuelve a intentar.
+        """
+        if not self.release_queue:
+            self._reload_release_queue_if_empty()
+        if not self.release_queue:
+            return None  # no hay datos
 
-    def peek_offer_id(self) -> Optional[str]:
-        self._purge_offers_top()
-        return self._offers_now[0][2] if self._offers_now else None
+        jid = self.release_queue.popleft()
+        # mantener ciclo: el mismo ID volverá a aparecer al recargar
+        return self.repo.get(jid)
 
-    def pop_offer_id(self) -> Optional[str]:
-        self._purge_offers_top()
-        if not self._offers_now:
-            return None
-        _, _, jid = heapq.heappop(self._offers_now)
-        self._offers_set.discard(jid)
-        return jid
+    # ---------- (2) Historial ----------
+    def record_offer_result(self, job_id: str, accepted: bool) -> None:
+        """
+        Registra si el jugador aceptó o rechazó un job ofrecido.
+        (Si deseas TTL de pop-up o rechazos automáticos, también terminan aquí)
+        """
+        self.history.append(HistoryEntry(job_id=job_id, accepted=accepted, onTime=False))
 
-    def accept(self, job_id: str) -> bool:
-        """Acepta oferta → inventario."""
-        if job_id not in self._offers_set:
+    def mark_delivered(self, job_id: str, delivered_on_time: bool) -> bool:
+        """
+        Marca como entregado: saca del inventario y actualiza onTime en el historial.
+        """
+        try:
+            self.inventory.remove(job_id)
+        except ValueError:
             return False
-        self._invalid_offers.add(job_id)
-        self._offers_set.discard(job_id)
-        self._purge_offers_top()
 
-        self._inventory.append(job_id)
-        if self._current_id is None:
-            self._current_id = job_id
+        # Busca en historial la última entrada del mismo job_id que tenga accepted=True
+        for entry in reversed(self.history):
+            if entry.job_id == job_id and entry.accepted:
+                entry.onTime = delivered_on_time
+                break
+
+        # Si el entregado era el actual, selecciona otro o None
+        if self.currentJob_id == job_id:
+            self.currentJob_id = self.inventory[0] if self.inventory else None
         return True
 
-    def reject(self, job_id: str) -> bool:
-        """Rechaza/descarta oferta."""
-        if job_id not in self._offers_set:
-            return False
-        self._invalid_offers.add(job_id)
-        self._offers_set.discard(job_id)
-        self._purge_offers_top()
-        return True
+    # ---------- (3) Inventario ----------
+    def accept_job(self, job_id: str) -> None:
+        """
+        Añade un job aceptado al inventario (si no estaba). No valida pesos/capacidad aquí.
+        """
+        if job_id not in self.inventory:
+            self.inventory.append(job_id)
+        # Si no hay current, lo selecciona por conveniencia
+        if self.currentJob_id is None:
+            self.currentJob_id = job_id
 
-    # ---------- inventario ----------
-    def current(self) -> Optional[str]:
-        return self._current_id
-
-    def set_current(self, job_id: Optional[str]) -> bool:
+    # ---------- Current job ----------
+    def set_current_job(self, job_id: Optional[str]) -> bool:
         if job_id is None:
-            self._current_id = None
+            self.currentJob_id = None
             return True
-        if job_id in self._inventory:
-            self._current_id = job_id
+        if job_id in self.inventory:
+            self.currentJob_id = job_id
             return True
         return False
 
-    def inventory_ids(self) -> List[str]:
-        return list(self._inventory)
+    def current_job(self) -> Optional[Job]:
+        return self.repo.get(self.currentJob_id) if self.currentJob_id else None
 
-    def inventory_view(self, order_by: OrderKey = "deadline") -> List[str]:
+    # ---------- Helpers de lectura ----------
+    def inventory_jobs(self) -> List[Job]:
+        return [self.repo.get(jid) for jid in self.inventory]
+
+    def history_summary(self) -> List[Dict]:
         """
-        Devuelve una VISTA ordenada (lista nueva) de los IDs del inventario.
-        No altera el orden base elegido por el jugador.
+        Resumen útil para UI/depuración.
         """
-        if not self._inventory:
-            return []
-        if order_by == "deadline":
-            return sorted(self._inventory, key=lambda jid: self.repo.get(jid).key_deadline())
-        if order_by == "priority":
-            return sorted(self._inventory, key=lambda jid: self.repo.get(jid).key_priority_then_deadline())
-        return list(self._inventory)
-
-    def mark_delivered(self, job_id: str) -> bool:
-        """Mueve del inventario al historial (tras entregar)."""
-        try:
-            self._inventory.remove(job_id)
-        except ValueError:
-            return False
-        self._history.append(job_id)
-        if self._current_id == job_id:
-            self._current_id = self._inventory[0] if self._inventory else None
-        return True
-
-    # ---------- historial ----------
-    def history_ids(self) -> List[str]:
-        return list(self._history)
-
-    # ---------- internos ----------
-    def _push_offer(self, job_id: str) -> None:
-        """Inserta una oferta con clave (-priority, deadline) para min-heap."""
-        job = self.repo.get(job_id)
-        key = job.key_priority_then_deadline()  # (-priority, deadline)
-        heapq.heappush(self._offers_now, (key, self._seq_offers, job_id))
-        self._offers_set.add(job_id)
-        self._seq_offers += 1
-
-    def _purge_offers_top(self) -> None:
-        """Purgado perezoso de ofertas inválidas en el tope."""
-        while self._offers_now and self._offers_now[0][2] in self._invalid_offers:
-            _, _, jid = heapq.heappop(self._offers_now)
-            self._invalid_offers.discard(jid)
+        return [{"id": h.job_id, "accepted": h.accepted, "onTime": h.onTime} for h in self.history]
