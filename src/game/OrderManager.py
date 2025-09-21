@@ -71,12 +71,8 @@ class OrderManager:
         return self.repo.get(jid)
 
     # ---------- (2) Historial ----------
-    def record_offer_result(self, job_id: str, accepted: bool) -> None:
-        """
-        Registra si el jugador aceptó o rechazó un job ofrecido.
-        (Si deseas TTL de pop-up o rechazos automáticos, también terminan aquí)
-        """
-        self.history.append(HistoryEntry(job_id=job_id, accepted=accepted, onTime=False))
+    def record_offer_result(self, job_id: str, accepted: bool, onTime=False) -> None:
+        self.history.append(HistoryEntry(job_id=job_id, accepted=accepted, onTime=onTime))
 
     def mark_delivered(self, job_id: str, delivered_on_time: bool) -> bool:
         """

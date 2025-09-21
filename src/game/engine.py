@@ -47,14 +47,19 @@ class Game:
         # 7) Pedidos
         self._init_orders()
 
+        # 8) Reloj interno en segundos
+        self._game_elapsed = 0.0
+
     def _init_orders(self):
         """Configura el sistema de los pedidos."""
         self.jobs = JobLoader()          # prepara cliente y contenedor
         self.jobs.load_from_api()        # fetch inicial (bloquea lo justo o hazlo en pantalla de carga)
         self.orders = self.jobs.create_order_manager()
         self._job_offer_elapsed = 5.0  # para controlar cada cuánto ofrecer un nuevo pedido
-        self._pickup_markers = []   # [(px, py, id)]
-        self._dropoff_markers = []  # [(px, py, id)]
+        self._pickup_markers = []   # [(px, py, id, expires_at)]
+        self._dropoff_markers = []  # [(px, py, id, due_at)]
+        self._TIME_TO_EXPIRE = 15.0  # segundos para que un pedido expire
+        self._DROPOFF_LATE_AFTER = 10.0  # segundos para que un dropoff pase a "late"
 
     def _init_weather(self):
         """Configura el sistema de clima."""
@@ -118,7 +123,6 @@ class Game:
         # Reinicia pedidos
         self._pickup_markers = []   # [(px, py)]
         self._dropoff_markers = []  # [(px, py)]
-
         
         # Opcional: reiniciar clima al comenzar una nueva run
         self._init_weather()
@@ -164,12 +168,19 @@ class Game:
         # 4) Actualiza pedidos
         self._job_offer_elapsed += dt
         while self._job_offer_elapsed >= 6.0:
-            self.launch_a_job()
+            if(len(self._pickup_markers) < 4 and len(self._dropoff_markers) < 4):  # máximo 4 pedidos activos a la vez
+              self.launch_a_job()
             self._job_offer_elapsed -= 10.0
         
+        self._expire_pickup_offers()
+
         # 5) Verifica proximidad a pickups
         self._check_pickup_proximity()
         self._check_dropoff_proximity()
+
+        #6) Actualiza reloj interno
+        self._game_elapsed += dt
+
 
     def _draw_temporizador(self):
         # HUD: temporizador arriba izquierda 
@@ -214,17 +225,17 @@ class Game:
       px = gx * ts + ts // 2
       py = gy * ts + ts // 2
 
-      self._pickup_markers.append((px, py, job.id))   # amarillo
-      # self._dropoff_markers.append((qx, qy, job.id))  # verde
+      expires_at = self._game_elapsed + self._TIME_TO_EXPIRE
+      self._pickup_markers.append((px, py, job.id, expires_at))
     
     def _draw_job_markers(self):
-      # pickups: amarillo
-      for (px, py, id) in self._pickup_markers:
+      # pickups:
+      for (px, py, _, _) in self._pickup_markers:
           pygame.draw.circle(self.screen, (255, 255, 0), (px, py), 6)      # relleno
           pygame.draw.circle(self.screen, (0, 0, 0), (px, py), 6, 2)       # borde (opcional)
       
-      # dropoffs: verde
-      for (qx, qy, id) in self._dropoff_markers:
+      # dropoffs:
+      for (qx, qy, _, _) in self._dropoff_markers:
           pygame.draw.circle(self.screen, (0, 200, 0), (qx, qy), 6)
           pygame.draw.circle(self.screen, (0, 0, 0), (qx, qy), 6, 2)
 
@@ -236,15 +247,14 @@ class Game:
       ts = settings.TILE_SIZE
 
       # Posición del jugador en coordenadas de grilla
-      # (si tu Player ya mantiene grid_pos actualizada, puedes usarla directamente)
       pgx = int(self.player.x // ts)
       pgy = int(self.player.y // ts)
 
       to_remove_idx = []
 
-      # Recorremos marcadores: (px, py, job_id)
+      # Recorremos marcadores: (px, py, job_id, expires_at)
       for idx, marker in enumerate(self._pickup_markers):
-          px, py, jid = marker
+          px, py, jid, expires_at = marker
           mgx = int(px // ts)  # grid x del marcador
           mgy = int(py // ts)  # grid y del marcador
 
@@ -253,12 +263,14 @@ class Game:
 
           if dist <= 3:
               job = self.jobs.get(jid)
-              print(job)
-              # Agregar dropoff marker
+              self.orders.accept_job(jid)
+              print(f"Pedido agregado al inventario, id: {job.id}")
+              
               dx, dy = job.dropoff
               qx = dx * ts + ts // 2
               qy = dy * ts + ts // 2
-              self._dropoff_markers.append((qx, qy, job.id))
+              due_at = self._game_elapsed + self._DROPOFF_LATE_AFTER   # para el manejo de "onTime"
+              self._dropoff_markers.append((qx, qy, job.id, due_at))
 
               to_remove_idx.append(idx)
 
@@ -271,6 +283,7 @@ class Game:
       Si el jugador está a ≤ 3 celdas de un dropoff:
         - imprime el Job correspondiente
         - elimina ese marcador de _dropoff_markers
+        - marca onTime según si llegó antes de due_at
       """
       ts = settings.TILE_SIZE
       pgx = int(self.player.x // ts)
@@ -278,18 +291,36 @@ class Game:
 
       to_remove_idx = []
 
-      for idx, (qx, qy, jid) in enumerate(self._dropoff_markers):
+      for idx, (qx, qy, jid, due_at) in enumerate(self._dropoff_markers):
           mgx = int(qx // ts)  # grid x del dropoff
           mgy = int(qy // ts)  # grid y del dropoff
           dist = abs(mgx - pgx) + abs(mgy - pgy)
 
           if dist <= 3:
               job = self.jobs.get(jid)
-              print("Reached dropoff:", job)
+              on_time = self._game_elapsed <= due_at
+              self.orders.mark_delivered(jid, on_time)  
+              print("Pedido agregado al historial, id:", job.id, "onTime: ", on_time)
               to_remove_idx.append(idx)
 
       for i in reversed(to_remove_idx):
           self._dropoff_markers.pop(i)
+
+    def _expire_pickup_offers(self):
+      """
+      Elimina pickups cuyo TTL venció. Registra en historial como NO aceptados.
+      """
+      to_remove = []
+      for idx, (_, _, jid, expires_at) in enumerate(self._pickup_markers):
+          if self._game_elapsed >= expires_at:
+              # historial: no aceptado
+              self.orders.record_offer_result(jid, accepted=False)
+              # aquí luego puedes ajustar reputación/puntaje si corresponde
+              print(f"Pickup expired for job {jid}")
+              to_remove.append(idx)
+
+      for i in reversed(to_remove):
+          self._pickup_markers.pop(i)
 
 
 
