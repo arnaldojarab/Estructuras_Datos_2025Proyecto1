@@ -198,6 +198,15 @@ class MapLoader:
         sym = self.tiles[y][x]
         info = self.legend.get(sym, {})
         return float(info.get("surface_weight", 1.0))
+    
+    def is_park(self, x: int, y: int) -> bool:
+        """
+        Devuelve True si el tile en (x,y) es un parque ('P').
+        """
+        if y < 0 or y >= self._h or x < 0 or x >= self._w:
+            return False
+        sym = self.tiles[y][x]
+        return sym == "P" or (self.legend.get(sym, {}).get("name", "").lower() == "park")
 
     # --------- Render simple ---------
 

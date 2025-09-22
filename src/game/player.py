@@ -36,8 +36,8 @@ class Player:
         Movimiento con separación de ejes (X luego Y) para permitir “deslizamiento” suave
         al chocar con paredes. Bloquea el eje donde habría colisión.
         """
-        if self.exhausted:
-            return  # no se mueve si está exhausto
+        #if self.exhausted:
+            #return  # no se mueve si está exhausto
 
         old_x, old_y = self.x, self.y
 
@@ -97,3 +97,37 @@ class Player:
 
     def draw(self, screen):
         pygame.draw.circle(screen, (200, 230, 255), (int(self.x), int(self.y)), self.radius)
+
+
+    def get_speed(self, game_map):
+        speed = 1
+        if self.stamina < 30:
+            speed = speed * 0.8
+
+        ts = settings.TILE_SIZE
+        tx = int(self.x // ts)
+        ty = int(self.y // ts)
+        
+        if game_map.is_park(tx, ty):
+            speed = speed * 0.90
+
+        if self.exhausted:
+            speed = speed * 0
+        else:
+            speed = speed * 1
+
+        return speed
+    
+
+    def reset(self):
+        self.grid_pos = (1, 1)
+        self.pixel_pos = [
+            self.grid_pos[0] * settings.TILE_SIZE,
+            self.grid_pos[1] * settings.TILE_SIZE,
+        ]
+        self.stamina = 100
+        ts = settings.TILE_SIZE
+        start_cx = 1 * ts + ts // 2
+        start_cy = 1 * ts + ts // 2
+        self.x = start_cx
+        self.y = start_cy

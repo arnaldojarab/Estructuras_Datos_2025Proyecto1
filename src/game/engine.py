@@ -108,17 +108,8 @@ class Game:
         """Reinicia partida al empezar a jugar."""
         self.timer.reset()
         # reset simple del jugador (ajústalo si tienes método reset())
-        self.player.grid_pos = (1, 1)
-        self.player.pixel_pos = [
-            self.player.grid_pos[0] * settings.TILE_SIZE,
-            self.player.grid_pos[1] * settings.TILE_SIZE,
-        ]
-        ts = settings.TILE_SIZE
-        start_cx = 1 * ts + ts // 2
-        start_cy = 1 * ts + ts // 2
-        self.player.x = start_cx
-        self.player.y = start_cy
-        #self.player.stamina = 100
+        self.player.reset()
+        
 
         # Reinicia pedidos
         self._pickup_markers = []   # [(px, py)]
@@ -154,7 +145,8 @@ class Game:
         # 2) Lee input y aplica multiplicador de velocidad del clima
         keys = pygame.key.get_pressed()
         base_px_per_sec = 120  # tu demo actual
-        speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
+        #speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
+        speed_mult = self.current_speed()
         dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
         dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
         self.player.move_with_collision(dx, dy,self.map)
@@ -321,6 +313,12 @@ class Game:
 
       for i in reversed(to_remove):
           self._pickup_markers.pop(i)
+
+    
+    def current_speed(self):
+        return self.player.get_speed(self.map) * self.weather.current_multiplier()
+
+
 
 
 
