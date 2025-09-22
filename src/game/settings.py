@@ -27,3 +27,6 @@ UI_FONT_SIZE = 28
 # --- TIMER ---
 TIMER_START_SECONDS = 60  # 10 minutos TODO modificar por ahora 60 segundos
 TIMER_TEXT = (240, 240, 240)
+
+# --- Tipografía ---
+STATS_FONT_SIZE = 20
