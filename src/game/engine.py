@@ -94,6 +94,7 @@ class Game:
             return (self._handle_event_menu, self._update_menu, self._draw_menu)
         else:  # GameState.PLAYING
             return (self._handle_event_play, self._update_play, self._draw_play)
+        
 
     def _reset_run(self):
         """Reinicia partida al empezar a jugar."""
@@ -124,8 +125,15 @@ class Game:
 
     # --------- Estado: PLAYING ---------
     def _handle_event_play(self, event: pygame.event.Event):
+        # Salir al menú
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.MENU
+            return
+
+        # Deshacer posición con tecla C
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
+            self.player.undo_position()
+            return
 
     def _update_play(self, dt: float):
         # 1) Actualiza clima (sin dibujar)
@@ -151,6 +159,8 @@ class Game:
 
         #6) Actualiza reloj interno
         self._game_elapsed += dt
+
+    
 
 
     def _draw_temporizador(self):

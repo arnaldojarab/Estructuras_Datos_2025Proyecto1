@@ -1,3 +1,4 @@
+from collections import deque
 import pygame
 
 from . import settings
@@ -13,6 +14,12 @@ class Player:
          # --- resistencia ---
         self.stamina = 100        # valor inicial
         self.exhausted = False    # estado actual
+
+         # --- historial de posiciones para "Ctrl+Z" ---
+        self._pos_history = deque(maxlen=50)  # ring buffer
+        self._snapshot_timer = 0.0
+        self._snapshot_every = 1.5           # segundos entre snapshots
+        self._pos_history.append((self.x, self.y))  # punto de partida
 
     def _collides_at(self, nx, ny, game_map):
         """
@@ -74,6 +81,14 @@ class Player:
             if self.stamina < 100:
                 self.stamina = min(100, self.stamina + recover_rate * 0.5)
 
+        self._snapshot_timer += dt
+        if self._snapshot_timer >= self._snapshot_every:
+            self._snapshot_timer = 0.0
+            last = self._pos_history[-1] if self._pos_history else None
+            moved = (not last) or (abs(self.x - last[0]) + abs(self.y - last[1]) >= 1.0)
+            if moved:
+                self._pos_history.append((self.x, self.y))
+
     def draw_stamina(self, screen):
         bar_w, bar_h = 120, 14   # tamaño de la barra
         margin = 10              # margen desde los bordes
@@ -131,3 +146,19 @@ class Player:
         start_cy = 1 * ts + ts // 2
         self.x = start_cx
         self.y = start_cy
+
+        # reset del historial
+        self._pos_history.clear()
+        self._pos_history.append((self.x, self.y))
+        self._snapshot_timer = 0.0
+
+    def undo_position(self):
+        """
+        Retrocede a la posición previa del historial.
+        Evita quedarse en el mismo punto si el último snapshot == posición actual.
+        """
+        if len(self._pos_history) > 1:
+            # descarta el snapshot más reciente (pos actual o casi actual)
+            self._pos_history.pop()
+            x, y = self._pos_history[-1]
+            self.x, self.y = x, y
