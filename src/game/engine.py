@@ -5,10 +5,10 @@ from . import settings
 from .map_loader import MapLoader
 from .player import Player
 from .ui.menu import MainMenu
-from .util import format_mmss
-from .util import CountdownTimer
 
 from .weather import WeatherManager
+
+from .statistics_logic.statistic_logic import statisticLogic
 
 from .jobs_logic.job_logic import JobLogic
 
@@ -40,7 +40,7 @@ class Game:
 
         # 5) Estado + timer
         self.state = GameState.MENU
-        self.timer = CountdownTimer(settings.TIMER_START_SECONDS)
+        self.statistics_logic = statisticLogic()
 
         # 6) Clima
         self._init_weather()
@@ -98,7 +98,9 @@ class Game:
 
     def _reset_run(self):
         """Reinicia partida al empezar a jugar."""
-        self.timer.reset()
+        # reset de estaditicas
+        self.statistics_logic.reset()
+        
         # reset simple del jugador
         self.player.reset()
 
@@ -149,26 +151,14 @@ class Game:
         self.player.move_with_collision(dx, dy,self.map)
         self.player.update(dt)
 
-        # 3) Timer de partida
-        self.timer.tick(dt)
-        if self.timer.finished():
-            self.state = GameState.MENU
+        # 3) Actualiza Estadísticas
+        self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
         
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
 
         #6) Actualiza reloj interno
         self._game_elapsed += dt
-
-    
-
-
-    def _draw_temporizador(self):
-        # HUD: temporizador arriba izquierda 
-        timer_surface = self.hud_font.render(
-            format_mmss(self.timer.time_left), True, settings.TIMER_TEXT
-        )
-        self.screen.blit(timer_surface, (10, 8))
 
     def _draw_weather(self):
         # HUD: clima (condición, multiplicador y tiempo restante del estado)
@@ -183,9 +173,10 @@ class Game:
         self.screen.blit(weather_surface, (x, y))
 
     def _draw_play(self):
-        self._draw_temporizador()
+        #self._draw_temporizador()
         self._draw_weather()
         self.job_logic.draw(self.screen)
+        self.statistics_logic.draw(self.screen)
 
     # --------- Clima ---------
     def _update_weather(self, dt: float):

@@ -26,12 +26,6 @@ class JobLogic:
     """
     Maneja ofertas (pickup), aceptaciones (inventory) y entregas (dropoff + history).
     Mantiene y dibuja marcadores y maneja timers relativos.
-
-    Uso desde engine:
-      - job_logic = JobLogic(tile_size=settings.TILE_SIZE)
-      - job_logic.reset()
-      - job_logic.update(dt, player.x, player.y)
-      - job_logic.draw(screen)
     """
 
     # Distancias en tiles
@@ -59,6 +53,9 @@ class JobLogic:
 
         # Interno: cada cuánto intento lanzar oferta
         self._offer_interval = 5.0
+
+        # Reputacion
+        self.reputation = 70  # valor inicial
 
     # =================== API pública ===================
 
@@ -121,6 +118,19 @@ class JobLogic:
                 "onTime": h.onTime,
             })
         return out
+    
+    def getReputation(self) -> int:
+        """Devuelve la reputación actual (0-100)."""
+        return self.reputation
+    
+    def getMoney(self) -> float:
+        """Devuelve el dinero ganado por entregas."""
+        total = 0.0
+        for h in self.orders.history:
+            if h.accepted:
+                job = self.jobs.get(h.job_id)
+                total += job.payout
+        return total
 
     # =================== Lógica interna ===================
 
@@ -144,6 +154,7 @@ class JobLogic:
             if self._game_elapsed >= m.expires_at:
                 self.orders.record_offer_result(m.job_id, accepted=False)
                 print(f"Pedido expirado (agregado al historial como rechazado), id: {m.job_id}")
+                self.reputation -= 5  # penalización por no aceptar
                 to_remove.append(idx)
         for i in reversed(to_remove):
             self._pickup_markers.pop(i)
@@ -184,6 +195,12 @@ class JobLogic:
                 on_time = self._game_elapsed <= m.due_at
                 self.orders.mark_delivered(m.job_id, delivered_on_time=on_time)
                 print(f"Pedido entregado (removido del inventario y agregado al historial), id: {m.job_id}, onTime={on_time}")
+                if on_time:
+                    self.reputation += 10  # recompensa por entrega a tiempo
+                    if self.reputation > 100:
+                        self.reputation = 100
+                else:
+                    self.reputation -= 10   # penalización por entrega tarde
                 to_remove_dropoffs.append(idx)
 
         for i in reversed(to_remove_dropoffs):

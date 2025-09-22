@@ -83,11 +83,8 @@ class OrderManager:
         except ValueError:
             return False
 
-        # Busca en historial la última entrada del mismo job_id que tenga accepted=True
-        for entry in reversed(self.history):
-            if entry.job_id == job_id and entry.accepted:
-                entry.onTime = delivered_on_time
-                break
+        # Registrar la entrega directamente en el historial
+        self.history.append(HistoryEntry(job_id=job_id, accepted=True, onTime=delivered_on_time))
 
         # Si el entregado era el actual, selecciona otro o None
         if self.currentJob_id == job_id:
