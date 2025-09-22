@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Callable
-from .api_client import APIClient
+from ..api_client import APIClient
 from .job import Job
 from .OrderManager import OrderManager
 import os
@@ -8,14 +8,14 @@ import os
 
 class JobLoader:
     """
-    Fuente de verdad de Jobs + fábrica de OrderManager.
+    Jobs + fábrica de OrderManager.
     - Usa APIClient.getJobs() para traer los datos (JSON -> Job).
     - Mantiene un catálogo maestro: Dict[id, Job].
     - Crea OrderManager ya construido con los IDs (snapshot por partida).
     """
 
     def __init__(self, api_client: Optional[APIClient] = None) -> None:
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", ".."))
         self.api = api_client or APIClient(base_dir)
         self._jobs: Dict[str, Job] = {}
 

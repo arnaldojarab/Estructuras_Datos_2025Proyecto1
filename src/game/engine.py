@@ -9,7 +9,8 @@ from .util import format_mmss
 from .util import CountdownTimer
 
 from .weather import WeatherManager
-from .job_loader import JobLoader
+
+from .jobs_logic.job_logic import JobLogic
 
 class GameState(Enum):
     MENU = auto()
@@ -45,21 +46,11 @@ class Game:
         self._init_weather()
 
         # 7) Pedidos
-        self._init_orders()
+        self.job_logic = JobLogic(tile_size=settings.TILE_SIZE)
+        self.job_logic.reset()
 
         # 8) Reloj interno en segundos
         self._game_elapsed = 0.0
-
-    def _init_orders(self):
-        """Configura el sistema de los pedidos."""
-        self.jobs = JobLoader()          # prepara cliente y contenedor
-        self.jobs.load_from_api()        # fetch inicial (bloquea lo justo o hazlo en pantalla de carga)
-        self.orders = self.jobs.create_order_manager()
-        self._job_offer_elapsed = 5.0  # para controlar cada cuánto ofrecer un nuevo pedido
-        self._pickup_markers = []   # [(px, py, id, expires_at)]
-        self._dropoff_markers = []  # [(px, py, id, due_at)]
-        self._TIME_TO_EXPIRE = 15.0  # segundos para que un pedido expire
-        self._DROPOFF_LATE_AFTER = 10.0  # segundos para que un dropoff pase a "late"
 
     def _init_weather(self):
         """Configura el sistema de clima."""
@@ -107,15 +98,13 @@ class Game:
     def _reset_run(self):
         """Reinicia partida al empezar a jugar."""
         self.timer.reset()
-        # reset simple del jugador (ajústalo si tienes método reset())
+        # reset simple del jugador
         self.player.reset()
-        
 
         # Reinicia pedidos
-        self._pickup_markers = []   # [(px, py)]
-        self._dropoff_markers = []  # [(px, py)]
+        self.job_logic.reset()
         
-        # Opcional: reiniciar clima al comenzar una nueva run
+        # Reiniciar clima
         self._init_weather()
 
     # --------- Estado: MENU ---------
@@ -158,17 +147,7 @@ class Game:
             self.state = GameState.MENU
         
         # 4) Actualiza pedidos
-        self._job_offer_elapsed += dt
-        while self._job_offer_elapsed >= 6.0:
-            if(len(self._pickup_markers) < 4 and len(self._dropoff_markers) < 4):  # máximo 4 pedidos activos a la vez
-              self.launch_a_job()
-            self._job_offer_elapsed -= 10.0
-        
-        self._expire_pickup_offers()
-
-        # 5) Verifica proximidad a pickups
-        self._check_pickup_proximity()
-        self._check_dropoff_proximity()
+        self.job_logic.update(dt, self.player.x, self.player.y)
 
         #6) Actualiza reloj interno
         self._game_elapsed += dt
@@ -196,7 +175,7 @@ class Game:
     def _draw_play(self):
         self._draw_temporizador()
         self._draw_weather()
-        self._draw_job_markers()
+        self.job_logic.draw(self.screen)
 
     # --------- Clima ---------
     def _update_weather(self, dt: float):
@@ -205,115 +184,6 @@ class Game:
         # En tu versión previa, llamabas self.weather.update() sin dt:
         self.weather.update()
         # Si más adelante migras a update(dt), cámbialo por:
-    
-    def launch_a_job(self):
-      job = self.orders.pop_next_job()
-      if not job:
-          print("No job available")
-          return
-
-      gx, gy = job.pickup
-      ts = settings.TILE_SIZE
-      px = gx * ts + ts // 2
-      py = gy * ts + ts // 2
-
-      expires_at = self._game_elapsed + self._TIME_TO_EXPIRE
-      self._pickup_markers.append((px, py, job.id, expires_at))
-    
-    def _draw_job_markers(self):
-      # pickups:
-      for (px, py, _, _) in self._pickup_markers:
-          pygame.draw.circle(self.screen, (255, 255, 0), (px, py), 6)      # relleno
-          pygame.draw.circle(self.screen, (0, 0, 0), (px, py), 6, 2)       # borde (opcional)
-      
-      # dropoffs:
-      for (qx, qy, _, _) in self._dropoff_markers:
-          pygame.draw.circle(self.screen, (0, 200, 0), (qx, qy), 6)
-          pygame.draw.circle(self.screen, (0, 0, 0), (qx, qy), 6, 2)
-
-    def _check_pickup_proximity(self):
-      """
-      Si el jugador está a 3 celdas o menos de un pickup,
-      imprime el Job correspondiente y elimina ese marcador de _pickup_markers.
-      """
-      ts = settings.TILE_SIZE
-
-      # Posición del jugador en coordenadas de grilla
-      pgx = int(self.player.x // ts)
-      pgy = int(self.player.y // ts)
-
-      to_remove_idx = []
-
-      # Recorremos marcadores: (px, py, job_id, expires_at)
-      for idx, marker in enumerate(self._pickup_markers):
-          px, py, jid, expires_at = marker
-          mgx = int(px // ts)  # grid x del marcador
-          mgy = int(py // ts)  # grid y del marcador
-
-          # Distancia Manhattan en celdas
-          dist = abs(mgx - pgx) + abs(mgy - pgy)
-
-          if dist <= 3:
-              job = self.jobs.get(jid)
-              self.orders.accept_job(jid)
-              print(f"Pedido agregado al inventario, id: {job.id}")
-              
-              dx, dy = job.dropoff
-              qx = dx * ts + ts // 2
-              qy = dy * ts + ts // 2
-              due_at = self._game_elapsed + self._DROPOFF_LATE_AFTER   # para el manejo de "onTime"
-              self._dropoff_markers.append((qx, qy, job.id, due_at))
-
-              to_remove_idx.append(idx)
-
-      # Elimina en orden inverso para no desplazar índices
-      for i in reversed(to_remove_idx):
-          self._pickup_markers.pop(i)
-
-    def _check_dropoff_proximity(self):
-      """
-      Si el jugador está a ≤ 3 celdas de un dropoff:
-        - imprime el Job correspondiente
-        - elimina ese marcador de _dropoff_markers
-        - marca onTime según si llegó antes de due_at
-      """
-      ts = settings.TILE_SIZE
-      pgx = int(self.player.x // ts)
-      pgy = int(self.player.y // ts)
-
-      to_remove_idx = []
-
-      for idx, (qx, qy, jid, due_at) in enumerate(self._dropoff_markers):
-          mgx = int(qx // ts)  # grid x del dropoff
-          mgy = int(qy // ts)  # grid y del dropoff
-          dist = abs(mgx - pgx) + abs(mgy - pgy)
-
-          if dist <= 3:
-              job = self.jobs.get(jid)
-              on_time = self._game_elapsed <= due_at
-              self.orders.mark_delivered(jid, on_time)  
-              print("Pedido agregado al historial, id:", job.id, "onTime: ", on_time)
-              to_remove_idx.append(idx)
-
-      for i in reversed(to_remove_idx):
-          self._dropoff_markers.pop(i)
-
-    def _expire_pickup_offers(self):
-      """
-      Elimina pickups cuyo TTL venció. Registra en historial como NO aceptados.
-      """
-      to_remove = []
-      for idx, (_, _, jid, expires_at) in enumerate(self._pickup_markers):
-          if self._game_elapsed >= expires_at:
-              # historial: no aceptado
-              self.orders.record_offer_result(jid, accepted=False)
-              # aquí luego puedes ajustar reputación/puntaje si corresponde
-              print(f"Pickup expired for job {jid}")
-              to_remove.append(idx)
-
-      for i in reversed(to_remove):
-          self._pickup_markers.pop(i)
-
     
     def current_speed(self):
         return self.player.get_speed(self.map) * self.weather.current_multiplier()
