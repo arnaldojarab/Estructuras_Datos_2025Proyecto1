@@ -69,7 +69,7 @@ class Player:
         Recupera stamina con el tiempo.
         dt: delta time en segundos
         """
-        recover_rate = 5 * dt  # puntos por segundo (ajusta)
+        recover_rate = 8 * dt  # puntos por segundo (ajusta)
         if self.exhausted:
             # Solo recupera hasta 30%
             if self.stamina < 30:
@@ -114,22 +114,19 @@ class Player:
         pygame.draw.circle(screen, (200, 230, 255), (int(self.x), int(self.y)), self.radius)
 
 
-    def get_speed(self, game_map):
+    def get_speed(self, peso_total):
         speed = 1
         if self.stamina < 30:
             speed = speed * 0.8
-
-        ts = settings.TILE_SIZE
-        tx = int(self.x // ts)
-        ty = int(self.y // ts)
-        
-        if game_map.is_park(tx, ty):
-            speed = speed * 0.90
-
         if self.exhausted:
             speed = speed * 0
         else:
             speed = speed * 1
+
+        Mpeso = max(0.8, 1 - 0.03 * peso_total )
+
+        speed * Mpeso
+        
 
         return speed
     

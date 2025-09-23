@@ -187,7 +187,7 @@ class Game:
         # Si más adelante migras a update(dt), cámbialo por:
     
     def current_speed(self):
-        return self.player.get_speed(self.map) * self.weather.current_multiplier()
+        return self.player.get_speed(self.job_logic.getWeight()) * self.weather.current_multiplier() 
 
 
 

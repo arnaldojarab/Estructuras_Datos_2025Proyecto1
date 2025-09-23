@@ -131,6 +131,16 @@ class JobLogic:
                 job = self.jobs.get(h.job_id)
                 total += job.payout
         return total
+    
+    def getWeight(self) -> float:
+        "Devuelve el peso de los pedidos en el inventario"
+        total = 0.0
+        for h in self.orders.inventory:
+                job = self.jobs.get(h)
+                total += job.weight
+        return total
+
+
 
     # =================== Lógica interna ===================
 
