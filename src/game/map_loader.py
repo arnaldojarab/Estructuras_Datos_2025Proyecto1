@@ -189,13 +189,18 @@ class MapLoader:
         info = self.legend.get(sym, {})
         return bool(info.get("blocked", False))
 
-    def surface_weight(self, x: int, y: int) -> float:
+    def surface_weight(self, x: float, y: float) -> float:
         """
-        Peso de la superficie para calcular coste/velocidad (default 1.0).
+        Peso de la superficie según la posición en píxeles (x,y).
+        Convierte a coordenadas de tile automáticamente.
         """
-        if y < 0 or y >= self._h or x < 0 or x >= self._w:
+        tx = int(x // settings.TILE_SIZE)
+        ty = int(y // settings.TILE_SIZE)
+
+        if ty < 0 or ty >= self._h or tx < 0 or tx >= self._w:
             return 1.0
-        sym = self.tiles[y][x]
+
+        sym = self.tiles[ty][tx]
         info = self.legend.get(sym, {})
         return float(info.get("surface_weight", 1.0))
     
@@ -203,9 +208,13 @@ class MapLoader:
         """
         Devuelve True si el tile en (x,y) es un parque ('P').
         """
-        if y < 0 or y >= self._h or x < 0 or x >= self._w:
+
+        tx = int(x // settings.TILE_SIZE)
+        ty = int(y // settings.TILE_SIZE)
+
+        if ty < 0 or ty >= self._h or tx < 0 or tx >= self._w:
             return False
-        sym = self.tiles[y][x]
+        sym = self.tiles[ty][tx]
         return sym == "P" or (self.legend.get(sym, {}).get("name", "").lower() == "park")
 
     # --------- Render simple ---------
