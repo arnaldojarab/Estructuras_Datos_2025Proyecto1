@@ -6,6 +6,7 @@ import pygame
 from .job_loader import JobLoader
 from .job import Job
 
+from .OrderManager import HistoryEntry
 # ---- Marcadores en pantalla ----
 @dataclass
 class PickupMarker:
@@ -91,10 +92,19 @@ class JobLogic:
             pygame.draw.circle(screen, (255, 255, 0), (m.px, m.py), 6)
             pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
 
-        # Dropoffs
-        for m in self._dropoff_markers:
+        # Dropoffs (solamente el current)
+        currentJob = self.orders.getCurrentJob()
+        if currentJob:
+            m = next((d for d in self._dropoff_markers if d.job_id == currentJob.id), None)
             pygame.draw.circle(screen, (0, 200, 0), (m.px, m.py), 6)
             pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
+            
+        # Dropoffs (todos)
+        # for m in self._dropoff_markers:
+        #     pygame.draw.circle(screen, (0, 200, 0), (m.px, m.py), 6)
+        #     pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
+    
+    # Getters y Setters
 
     def getInventory(self) -> List[Dict[str, Any]]:
         """Devuelve la lista de objetos Job actualmente en inventario."""
@@ -103,6 +113,10 @@ class JobLogic:
             job: Job = self.jobs.get(jid)
             out.append(job)
         return out
+    
+    def getInventoryIDs(self) -> List[str]:
+        """Devuelve la lista de IDs de objetos Job actualmente en inventario."""
+        return self.orders.inventory
 
     def getHistory(self) -> List[Dict[str, Any]]:
         """
@@ -118,6 +132,13 @@ class JobLogic:
                 "onTime": h.onTime,
             })
         return out
+    
+    def getHistoryIDs(self) -> List[HistoryEntry]:
+        """
+        Lista de dicts con información histórica.
+        Cada item: {"job_id": str, "accepted": bool, "onTime": bool}
+        """
+        return self.orders.history
     
     def getReputation(self) -> int:
         """Devuelve la reputación actual (0-100)."""
@@ -139,8 +160,6 @@ class JobLogic:
                 job = self.jobs.get(h)
                 total += job.weight
         return total
-
-
 
     # =================== Lógica interna ===================
 
@@ -195,23 +214,27 @@ class JobLogic:
         for i in reversed(to_remove_pickups):
             self._pickup_markers.pop(i)
 
-        # Dropoffs (entregar y setear onTime por due_at)
+        # Dropoffs (entregar y setear onTime por due_at), solo el current
+        currentJob = self.orders.getCurrentJob()
+        idx, m = next(((i, d) for i, d in enumerate(self._dropoff_markers) if d.job_id == (currentJob.id if currentJob else None)), (None, None))
+        if idx is None or m is None:
+            return
+        
         to_remove_dropoffs: List[int] = []
-        for idx, m in enumerate(self._dropoff_markers):
-            mgx = int(m.px // ts)
-            mgy = int(m.py // ts)
-            dist = abs(mgx - pgx) + abs(mgy - pgy)
-            if dist <= self._DROPOFF_RADIUS_TILES:
-                on_time = self._game_elapsed <= m.due_at
-                self.orders.mark_delivered(m.job_id, delivered_on_time=on_time)
-                print(f"Pedido entregado (removido del inventario y agregado al historial), id: {m.job_id}, onTime={on_time}")
-                if on_time:
-                    self.reputation += 10  # recompensa por entrega a tiempo
-                    if self.reputation > 100:
-                        self.reputation = 100
-                else:
-                    self.reputation -= 10   # penalización por entrega tarde
-                to_remove_dropoffs.append(idx)
+        mgx = int(m.px // ts)
+        mgy = int(m.py // ts)
+        dist = abs(mgx - pgx) + abs(mgy - pgy)
+        if dist <= self._DROPOFF_RADIUS_TILES:
+            on_time = self._game_elapsed <= m.due_at
+            self.orders.mark_delivered(m.job_id, delivered_on_time=on_time)
+            print(f"Pedido entregado (removido del inventario y agregado al historial), id: {m.job_id}, onTime={on_time}")
+            if on_time:
+                self.reputation += 10  # recompensa por entrega a tiempo
+                if self.reputation > 100:
+                    self.reputation = 100
+            else:
+                self.reputation -= 10   # penalización por entrega tarde
+            to_remove_dropoffs.append(idx)
 
         for i in reversed(to_remove_dropoffs):
             self._dropoff_markers.pop(i)

@@ -87,8 +87,8 @@ class OrderManager:
         self.history.append(HistoryEntry(job_id=job_id, accepted=True, onTime=delivered_on_time))
 
         # Si el entregado era el actual, selecciona otro o None
-        if self.currentJob_id == job_id:
-            self.currentJob_id = self.inventory[0] if self.inventory else None
+        self.set_current_job_default()
+        
         return True
 
     # ---------- (3) Inventario ----------
@@ -111,8 +111,16 @@ class OrderManager:
             self.currentJob_id = job_id
             return True
         return False
-
-    def current_job(self) -> Optional[Job]:
+    
+    def set_current_job_default(self) -> None:
+        self.currentJob_id = self.inventory[0] if self.inventory else None
+    
+    def getCurrentJobID(self) -> Optional[str]:
+        """Devuelve el ID del job actual o None si no hay."""
+        return self.currentJob_id
+    
+    def getCurrentJob(self) -> Optional[Job]:
+        """Devuelve el objeto Job del job actual o None si no hay."""
         return self.repo.get(self.currentJob_id) if self.currentJob_id else None
 
     # ---------- Helpers de lectura ----------
@@ -124,3 +132,4 @@ class OrderManager:
         Resumen útil para UI/depuración.
         """
         return [{"id": h.job_id, "accepted": h.accepted, "onTime": h.onTime} for h in self.history]
+    
