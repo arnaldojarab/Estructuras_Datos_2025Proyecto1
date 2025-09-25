@@ -1,20 +1,18 @@
 # src/game/weather.py
 import random
 import time
-
-from .api_client import APIClient
 import os
+from ..api_client import APIClient
+
+from .weather_visuals import WeatherVisuals 
 
 
 class WeatherManager:
     """
-    Sistema dinámico de clima basado en ráfagas y transiciones Markovianas.
-    - Usa los datos de la API city/weather
-    - Mantiene estado actual y siguiente
-    - Ofrece un multiplicador progresivo (interpolado) para aplicarse a la velocidad del jugador
+    Lógica del clima: ráfagas, condiciones actuales y transiciones Markovianas.
+    (Sin dependencias gráficas ni de pygame)
     """
 
-    # Multiplicadores base para cada condición
     BASE_MULTIPLIERS = {
         "clear": 1.00,
         "clouds": 0.98,
@@ -27,12 +25,11 @@ class WeatherManager:
         "cold": 0.92,
     }
 
-    def __init__(self):
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    def __init__(self,window_w, window_h):
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", ".."))
         api = APIClient(base_dir)
 
-        payload= api.get_weather()
-
+        payload = api.get_weather()
         data = payload.get("data", {})
 
         # Condición inicial
@@ -54,15 +51,15 @@ class WeatherManager:
         self.from_multiplier = self.BASE_MULTIPLIERS[self.current_condition]
         self.to_multiplier = self.from_multiplier
 
+        self.visuals = WeatherVisuals(window_w, window_h)
+
     # --------------------------
     # Internos
     # --------------------------
     def _random_burst_duration(self) -> float:
-        """Duración aleatoria de 45–60 segundos"""
-        return random.uniform(10, 11)
+        return random.uniform(6, 7)
 
     def _choose_next_condition(self) -> str:
-        """Elige siguiente condición según matriz de transición de Markov"""
         probs = self.transition_matrix.get(self.current_condition, {})
         if not probs:
             return "clear"
@@ -75,50 +72,48 @@ class WeatherManager:
         return list(probs.keys())[0]
 
     def _start_transition(self, next_condition: str):
-        """Inicializa transición suave entre condiciones"""
         self.transitioning = True
         self.transition_start = time.time()
         self.transition_duration = random.uniform(3, 5)
 
         self.from_multiplier = self.BASE_MULTIPLIERS[self.current_condition]
         self.to_multiplier = self.BASE_MULTIPLIERS[next_condition]
+        
+        self.visuals.handle_condition_change( next_condition)
 
-        # Actualizar estado
         self.current_condition = next_condition
 
     # --------------------------
     # API pública
     # --------------------------
-    def update(self):
-        """Actualizar estado del clima (se llama cada frame)"""
+    def update(self, dt: float):
         now = time.time()
         elapsed = now - self.burst_start
 
+        # Si la ráfaga terminó, escoger nuevo clima
         if not self.transitioning and elapsed >= self.burst_duration:
-            # Burst terminado → elegir nuevo clima
             next_condition = self._choose_next_condition()
             self._start_transition(next_condition)
             self.burst_start = now
             self.burst_duration = self._random_burst_duration()
 
-        # Si está en transición, revisar si terminó
+        # Revisar si terminó la transición
         if self.transitioning:
             t = (now - self.transition_start) / self.transition_duration
             if t >= 1.0:
                 self.transitioning = False
 
+        self.visuals.update(dt, self.current_condition, self.transitioning)
+
     def current_multiplier(self) -> float:
-        """Devuelve el multiplicador de velocidad interpolado"""
         if not self.transitioning:
             return self.BASE_MULTIPLIERS[self.current_condition]
 
-        # Interpolación lineal
         t = (time.time() - self.transition_start) / self.transition_duration
         t = min(max(t, 0.0), 1.0)
         return (1 - t) * self.from_multiplier + t * self.to_multiplier
 
     def debug_info(self) -> dict:
-        """Devuelve datos útiles para mostrar en pantalla"""
         return {
             "condition": self.current_condition,
             "multiplier": round(self.current_multiplier(), 2),
@@ -126,15 +121,50 @@ class WeatherManager:
             "transitioning": self.transitioning,
         }
     
+    def draw_weather_overlay(self, screen, player, dt):
+        self.visuals.draw_overlay(screen, player, dt, self.current_condition)
+
+    def reset(self, window_w=None, window_h=None):
+        """
+        Reinicia el WeatherManager y su parte visual.
+        """
+        # Si no se pasan dimensiones, usamos las existentes
+        window_w = window_w or self.visuals.window_w
+        window_h = window_h or self.visuals.window_h
+
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", ".."))
+        api = APIClient(base_dir)
+        payload = api.get_weather()
+        data = payload.get("data", {})
+
+        # Condición inicial
+        initial = data.get("initial", {"condition": "clear", "intensity": 0.0})
+        self.current_condition = initial["condition"]
+        self.current_intensity = float(initial.get("intensity", 0.0))
+
+        # Transiciones (Markov)
+        self.transition_matrix = data.get("transition", {})
+
+        # Timer de ráfaga
+        self.burst_duration = self._random_burst_duration()
+        self.burst_start = time.time()
+
+        # Transición suave
+        self.transitioning = False
+        self.transition_start = 0
+        self.transition_duration = 0
+        self.from_multiplier = self.BASE_MULTIPLIERS[self.current_condition]
+        self.to_multiplier = self.from_multiplier
+
+        # Reiniciar la parte visual
+        self.visuals = WeatherVisuals(window_w, window_h)
+    
+
     # --------------------------
     # Guardar / Cargar estado
     # --------------------------
     def save_state(self) -> dict:
-        """
-        Devuelve un diccionario serializable que guarda
-        toda la info necesaria para continuar la partida.
-        """
-        return {
+        base_state = {
             "current_condition": self.current_condition,
             "current_intensity": self.current_intensity,
             "burst_remaining": max(0.0, self.burst_duration - (time.time() - self.burst_start)),
@@ -144,11 +174,11 @@ class WeatherManager:
             "to_multiplier": self.to_multiplier,
             "burst_duration": self.burst_duration,
         }
+        # agregar estado visual
+        base_state["visuals"] = self.visuals.save_state()
+        return base_state
 
     def load_state(self, state: dict):
-        """
-        Restaura el estado guardado de la partida.
-        """
         self.current_condition = state["current_condition"]
         self.current_intensity = state.get("current_intensity", 0.0)
         self.transitioning = state.get("transitioning", False)
@@ -162,3 +192,6 @@ class WeatherManager:
             progress = state.get("transition_progress", 0.0)
             self.transition_start = time.time() - progress * self.transition_duration
 
+        # restaurar estado visual
+        visuals_state = state.get("visuals", {})
+        self.visuals.load_state(visuals_state)

@@ -1,11 +1,11 @@
 import pygame
 
 from . import settings
-from .map_loader import MapLoader
+from .map_logic.map_loader import MapLoader
 from .player import Player
 from .ui.menu import MainMenu
 
-from .weather import WeatherManager
+from .weather_logic.weather import WeatherManager
 
 from .statistics_logic.statistic_logic import statisticLogic
 
@@ -40,7 +40,7 @@ class Game:
         self.statistics_logic = statisticLogic()
 
         # 6) Clima
-        self._init_weather()
+        self.weather = WeatherManager(window_w,window_h) 
 
         # 7) Pedidos
         self.job_logic = JobLogic(tile_size=settings.TILE_SIZE)
@@ -53,9 +53,6 @@ class Game:
         self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height(), cols=6)
         self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
 
-    def _init_weather(self):
-        """Configura el sistema de clima."""
-        self.weather = WeatherManager()  
 
     # --------- Ciclo principal ---------
     def run(self):
@@ -81,6 +78,7 @@ class Game:
             # Dibuja mundo de fondo siempre:
             self.map.draw(self.screen)
             self.player.draw(self.screen)
+            self.weather.draw_weather_overlay(self.screen, self.player,dt)
             self.player.draw_stamina(self.screen)
             draw()
 
@@ -111,7 +109,7 @@ class Game:
         self.job_logic.reset()
         
         # Reiniciar clima
-        self._init_weather()
+        self.weather.reset()
 
     # --------- Estado: MENU ---------
     def _handle_event_menu(self, event: pygame.event.Event):
@@ -184,6 +182,7 @@ class Game:
     def _draw_play(self):
         #self._draw_temporizador()
         self._draw_weather()
+
         self.job_logic.draw(self.screen)
         self.statistics_logic.draw(self.screen)
 
@@ -192,7 +191,7 @@ class Game:
         """Avanza el clima. Si tu WeatherManager usa su propio clock interno,
         puedes ignorar dt; si no, pásalo adentro y ajusta WeatherManager.update(dt)."""
         # En tu versión previa, llamabas self.weather.update() sin dt:
-        self.weather.update()
+        self.weather.update(dt)
         # Si más adelante migras a update(dt), cámbialo por:
     
     def current_speed(self):
