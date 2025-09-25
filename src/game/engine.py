@@ -1,5 +1,4 @@
 import pygame
-from enum import Enum, auto
 
 from . import settings
 from .map_loader import MapLoader
@@ -11,13 +10,8 @@ from .weather import WeatherManager
 from .statistics_logic.statistic_logic import statisticLogic
 
 from .jobs_logic.job_logic import JobLogic
-
 from .ui.inventory import InventoryUI
-
-class GameState(Enum):
-    MENU = auto()
-    PLAYING = auto()
-    INVENTORY = auto()
+from .game_state import GameState
 
 class Game:
     def __init__(self):
@@ -166,6 +160,8 @@ class Game:
 
         # 3) Actualiza Estadísticas
         self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
+        if self.statistics_logic.check_time_finished():
+            self.state = GameState.MENU
         
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
