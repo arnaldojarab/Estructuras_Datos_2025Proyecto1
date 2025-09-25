@@ -8,7 +8,6 @@ from ..util import format_mmss, CountdownTimer  # usas estos en tu engine actual
 AlignX = Literal["left", "center", "right"]
 AlignY = Literal["top", "center", "bottom"]
 
-
 class statisticLogic:
     """
     Administra estadísticas del HUD. 
@@ -16,7 +15,6 @@ class statisticLogic:
 
     def __init__(
         self,
-        start_seconds: Optional[float] = None,
         align_x: AlignX = "center",
         align_y: AlignY = "top",
         margin_x: int = 0,
@@ -24,10 +22,7 @@ class statisticLogic:
         font: Optional[pygame.font.Font] = None,
     ) -> None:
         pygame.font.init()
-
-        self._timer = CountdownTimer(
-            start_seconds if start_seconds is not None else settings.TIMER_START_SECONDS
-        )
+        self._timer = CountdownTimer(settings.TIMER_START_SECONDS)
         self._font = font or pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self._font_stats = pygame.font.Font(settings.UI_FONT_NAME, settings.STATS_FONT_SIZE)
 
@@ -52,7 +47,6 @@ class statisticLogic:
         self._update_money(money)
         self._update_reputation(reputation)
 
-
     def draw(self, surface: pygame.Surface) -> None:
         """Dibuja TODAS las estadísticas en pantalla."""
         self._draw_timer(surface)
@@ -65,6 +59,9 @@ class statisticLogic:
 
     def _update_timer(self, dt: float) -> None:
         self._timer.tick(dt)
+    
+    def check_time_finished(self) -> bool:
+        return self._timer.finished()
 
     def _draw_timer(self, surface: pygame.Surface) -> None:
         label = format_mmss(self._timer.time_left)
@@ -89,10 +86,6 @@ class statisticLogic:
     
     def _update_reputation(self, amount: int) -> None:
         self._reputation = amount
-        # if self._reputation > 100:
-        #     self._reputation = 100
-        # elif self._reputation < 0:
-        #     self._reputation = 0
     
     def _draw_reputation(self, surface: pygame.Surface) -> None:
         label = f'reputacion: {self._reputation}'
