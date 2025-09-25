@@ -10,6 +10,7 @@ from .weather import WeatherManager
 from .statistics_logic.statistic_logic import statisticLogic
 
 from .jobs_logic.job_logic import JobLogic
+from .ui.inventory import InventoryUI
 from .game_state import GameState
 
 class Game:
@@ -47,6 +48,10 @@ class Game:
 
         # 8) Reloj interno en segundos
         self._game_elapsed = 0.0
+
+        #9) UI: Inventario
+        self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height(), cols=6)
+        self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
 
     def _init_weather(self):
         """Configura el sistema de clima."""
@@ -88,6 +93,8 @@ class Game:
         """Devuelve (handle_event, update, draw) según el estado actual."""
         if self.state == GameState.MENU:
             return (self._handle_event_menu, self._update_menu, self._draw_menu)
+        elif self.state == GameState.INVENTORY:
+            return(self._inventory_handle_event, self._inventory_update, self._inventory_draw)
         else:  # GameState.PLAYING
             return (self._handle_event_play, self._update_play, self._draw_play)
         
@@ -126,6 +133,10 @@ class Game:
         # Salir al menú
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.MENU
+            return
+        
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
+            self.state = GameState.INVENTORY
             return
 
         # Deshacer posición con tecla C
@@ -188,6 +199,36 @@ class Game:
         return self.player.get_speed(self.job_logic.getWeight()) * self.weather.current_multiplier()  * self.map.surface_weight(self.player.x, self.player.y)
 
 
+    def _inventory_handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_e, pygame.K_ESCAPE):
+                self.state = GameState.PLAYING
+                return
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                # Seleccionar como current job
+                sel_id = self.inventory_ui.selected_job_id()
+                if sel_id:
+                    self.job_logic.orders.set_current_job(sel_id)  # usa OrderManager.set_current_job(...)
+                return
+        # Reenviar eventos a la UI (clics y flechas)
+        self.inventory_ui.handle_event(event)
+
+
+    def _inventory_update(self, dt):
+        self.inventory_ui.update(dt)
+        # Refresca con el inventario real (preserva selección)
+        self.inventory_ui.set_jobs(self.job_logic.getInventory(), keep_selection=True)
+        # Pasa stats al encabezado
+        self.inventory_ui.set_header_stats(
+            money=self.job_logic.getMoney(),
+            weight=self.job_logic.getWeight(),
+            reputation=self.job_logic.getReputation()
+    )
+
+    def _inventory_draw(self):
+        # Tu loop ya dibuja: fondo/mapa/jugador/estamina
+        # Aquí solo pintás el overlay del inventario
+        self.inventory_ui.draw(self.screen)
 
 
 
