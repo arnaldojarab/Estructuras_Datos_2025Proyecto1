@@ -11,6 +11,7 @@ from .statistics_logic.statistic_logic import statisticLogic
 
 from .jobs_logic.job_logic import JobLogic
 from .ui.inventory import InventoryUI
+from .ui.game_over import GameOverLogic
 from .game_state import GameState
 
 class Game:
@@ -46,13 +47,12 @@ class Game:
         self.job_logic = JobLogic(tile_size=settings.TILE_SIZE)
         self.job_logic.reset()
 
-        # 8) Reloj interno en segundos
-        self._game_elapsed = 0.0
-
-        #9) UI: Inventario
+        #8) UI: Inventario
         self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height(), cols=6)
         self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
 
+        # 9) Game Over Logic
+        self.game_over = GameOverLogic(self.hud_font, self.small_font)
 
     # --------- Ciclo principal ---------
     def run(self):
@@ -93,6 +93,8 @@ class Game:
             return (self._handle_event_menu, self._update_menu, self._draw_menu)
         elif self.state == GameState.INVENTORY:
             return(self._inventory_handle_event, self._inventory_update, self._inventory_draw)
+        elif self.state == GameState.GAME_OVER:
+          return (self._handle_event_gameover, self._update_gameover, self._draw_gameover)
         else:  # GameState.PLAYING
             return (self._handle_event_play, self._update_play, self._draw_play)
         
@@ -148,24 +150,35 @@ class Game:
 
         # 2) Lee input y aplica multiplicador de velocidad del clima
         keys = pygame.key.get_pressed()
-        base_px_per_sec = 120  # tu demo actual
+        base_px_per_sec = settings.TILE_SIZE * 8 # Modificar para ajustar velocidad base
         #speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
         speed_mult = self.current_speed()
         dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
         dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
         self.player.move_with_collision(dx, dy,self.map)
-        self.player.update(dt)
+        self.player.update(dt, self.job_logic.getWeight())
 
         # 3) Actualiza Estadísticas
         self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
         if self.statistics_logic.check_time_finished():
-            self.state = GameState.MENU
+            self.game_over.enter(self.get_score())
+            self.state = GameState.GAME_OVER
         
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
 
-        #6) Actualiza reloj interno
-        self._game_elapsed += dt
+    # --------- Estado: GAME OVER ---------
+    def _handle_event_gameover(self, event: pygame.event.Event):
+      self.game_over.handle_event(event)
+
+    def _update_gameover(self, dt: float):
+        self.game_over.update(dt)
+        if self.game_over.is_done():
+            self.state = GameState.MENU
+
+    def _draw_gameover(self):
+        self.game_over.draw(self.screen)
+
 
     def _draw_weather(self):
         # HUD: clima (condición, multiplicador y tiempo restante del estado)
@@ -207,7 +220,7 @@ class Game:
                 # Seleccionar como current job
                 sel_id = self.inventory_ui.selected_job_id()
                 if sel_id:
-                    self.job_logic.orders.set_current_job(sel_id)  # usa OrderManager.set_current_job(...)
+                    self.job_logic.setCurrentJob(sel_id)  # Actualiza job actual en JobLogic
                 return
         # Reenviar eventos a la UI (clics y flechas)
         self.inventory_ui.handle_event(event)
@@ -228,6 +241,17 @@ class Game:
         # Tu loop ya dibuja: fondo/mapa/jugador/estamina
         # Aquí solo pintás el overlay del inventario
         self.inventory_ui.draw(self.screen)
+
+    def get_score(self) -> float:
+      # TODO: ajustar fórmula de score
+      """
+      score_base = suma de pagos * pay_mult (por reputación alta)
+      bonus_tiempo = +X si terminas antes del 20% del tiempo restante
+      penalizaciones = -Y por cancelaciones/caídas (opcional)
+      score = score_base + bonus_tiempo - penalizaciones
+      """
+      return self.job_logic.getMoney()
+
 
 
 

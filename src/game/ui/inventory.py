@@ -29,14 +29,26 @@ class InventoryUI:
         panel_h = 300
         self.panel_rect = pygame.Rect((w - panel_w)//2, (h - panel_h)//2, panel_w, panel_h)
 
+        # --- NUEVO: botón ordenar por prioridad ---
+        self._sort_key = None        # puede ser: None, "priority"
+        self._sort_desc = True  
+
     # --- NUEVO: refrescar lista con Jobs, preservando selección por id ---
     def set_jobs(self, jobs: List[Job], keep_selection: bool = True) -> None:
         prev_id = self._selected_id if keep_selection else None
-        self._jobs = jobs[:] if jobs else []
+
+        # --- NUEVO: aplicar orden activo antes de asignar ---
+        _jobs = jobs[:] if jobs else []
+        if self._sort_key == "priority":
+            _jobs.sort(key=lambda j: getattr(j, "priority", 0), reverse=self._sort_desc)
+
+        self._jobs = _jobs
+
         if not self._jobs:
             self._selected_idx = None
             self._selected_id = None
             return
+
         # try to keep previous selection
         idx = 0
         if prev_id is not None:
@@ -54,8 +66,22 @@ class InventoryUI:
         self._reputation = reputation
 
     def handle_event(self, event: pygame.event.Event):
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_p:  # P de Prioridad
+            # alternar modo y re-aplicar set_jobs
+                if self._sort_key != "priority":
+                    self._sort_key = "priority"
+                    self._sort_desc = True
+                else:
+                    self._sort_desc = not self._sort_desc
+                # reinyecta la lista actual para que set_jobs aplique el orden
+                self.set_jobs(self._jobs, keep_selection=True)
+                return
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
+            #2) GRILLA: selección
             grid_rect = self._grid_rect()
             if grid_rect.collidepoint(mx, my):
                 col = int((mx - grid_rect.x) // (self.cell + self.padding))
@@ -144,6 +170,12 @@ class InventoryUI:
             for k, line in enumerate(text_lines):
                 t = self.font.render(line, True, (20, 20, 20))
                 screen.blit(t, (base_x, base_y + k*18))
+            
+       # --- NUEVO: indicador de orden activo ---
+        if self._sort_key == "priority":
+            arrow = "↓" if self._sort_desc else "↑"
+            tag = self.font.render(f"Orden: Pri {arrow}", True, (20, 20, 20))
+            screen.blit(tag, (self.panel_rect.x + self.padding, self.panel_rect.y + self.padding))
 
     def _grid_rect(self) -> pygame.Rect:
         top = self.panel_rect.y + 52
@@ -153,4 +185,11 @@ class InventoryUI:
     # --- NUEVO: util para el engine ---
     def selected_job_id(self) -> Optional[str]:
         return self._selected_id
+    
+
+    # --- NUEVO: si luego quieres llamar desde el engine ---
+    def sort_by_priority(self, desc: bool = True) -> None:
+        self._sort_desc = desc
+        self._jobs.sort(key=lambda j: getattr(j, "priority", 0), reverse=self._sort_desc)
+        self.set_jobs(self._jobs, keep_selection=True)
 

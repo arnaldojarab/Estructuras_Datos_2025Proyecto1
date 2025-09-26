@@ -64,12 +64,18 @@ class Player:
             if self.stamina <= 0:
                 self.exhausted = True
 
-    def update(self, dt):
+    def update(self, dt, peso):
         """
         Recupera stamina con el tiempo.
         dt: delta time en segundos
         """
-        recover_rate = 8 * dt  # puntos por segundo (ajusta)
+        if peso > 4:
+            recover_rate = 3 * dt
+        else:
+            recover_rate = 5 * dt  # puntos por segundo (ajusta)
+
+        
+
         if self.exhausted:
             # Solo recupera hasta 30%
             if self.stamina < 30:
