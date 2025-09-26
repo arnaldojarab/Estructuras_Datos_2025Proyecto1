@@ -1,5 +1,5 @@
 # Global tunables
-TILE_SIZE = 15
+TILE_SIZE = 30
 FPS = 60
 
 SPRITES = {
@@ -25,7 +25,7 @@ UI_FONT_NAME = None            # None = fuente por defecto de pygame
 UI_FONT_SIZE = 28
 
 # --- TIMER ---
-TIMER_START_SECONDS = 60  # 10 minutos TODO modificar por ahora 60 segundos
+TIMER_START_SECONDS = 60 * 2 # 10 minutos TODO modificar por ahora 60 segundos
 TIMER_TEXT = (240, 240, 240)
 
 # --- Tipografía ---

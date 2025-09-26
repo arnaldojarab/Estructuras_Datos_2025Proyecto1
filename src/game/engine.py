@@ -145,7 +145,7 @@ class Game:
 
         # 2) Lee input y aplica multiplicador de velocidad del clima
         keys = pygame.key.get_pressed()
-        base_px_per_sec = 120  # tu demo actual
+        base_px_per_sec = settings.TILE_SIZE * 8 # Modificar para ajustar velocidad base
         #speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
         speed_mult = self.current_speed()
         dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
