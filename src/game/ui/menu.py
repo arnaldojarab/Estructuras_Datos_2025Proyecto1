@@ -27,9 +27,9 @@ class MainMenu:
             rect=pygame.Rect(btn_x, btn_y, btn_w, btn_h),
             text="Empezar  a  jugar",
             font=self.font,
-            bg=settings.BTN_BG,
+            bg=settings.BUTTON_BG,
             bg_hover=settings.BTN_BG_HOVER,
-            fg=settings.BTN_TEXT
+            fg=settings.TEXT_DARK
         )
 
     def resize(self, screen_size):
@@ -43,7 +43,7 @@ class MainMenu:
             self._layout(current_size)
 
         # Panel gris pantalla completa
-        pygame.draw.rect(surface, settings.MENU_PANEL_GRAY, self.panel_rect)
+        pygame.draw.rect(surface, settings.MENU_BG, self.panel_rect)
 
         # Botón
         self.btn_start.draw(surface)
