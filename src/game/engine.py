@@ -46,10 +46,7 @@ class Game:
         self.job_logic = JobLogic(tile_size=settings.TILE_SIZE)
         self.job_logic.reset()
 
-        # 8) Reloj interno en segundos
-        self._game_elapsed = 0.0
-
-        #9) UI: Inventario
+        #8) UI: Inventario
         self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height(), cols=6)
         self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
 
@@ -166,8 +163,6 @@ class Game:
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
 
-        #6) Actualiza reloj interno
-        self._game_elapsed += dt
 
     def _draw_weather(self):
         # HUD: clima (condición, multiplicador y tiempo restante del estado)
@@ -208,7 +203,7 @@ class Game:
                 # Seleccionar como current job
                 sel_id = self.inventory_ui.selected_job_id()
                 if sel_id:
-                    self.job_logic.orders.set_current_job(sel_id)  # usa OrderManager.set_current_job(...)
+                    self.job_logic.setCurrentJob(sel_id)  # Actualiza job actual en JobLogic
                 return
         # Reenviar eventos a la UI (clics y flechas)
         self.inventory_ui.handle_event(event)

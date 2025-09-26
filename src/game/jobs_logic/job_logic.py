@@ -161,6 +161,9 @@ class JobLogic:
                 total += job.weight
         return total
 
+    def setCurrentJob(self, job_id: str) -> None:
+        """Establece el job actual en inventario (si existe)."""
+        self.orders.set_current_job(job_id)
     # =================== Lógica interna ===================
 
     def _grid_center_to_px(self, gx: int, gy: int) -> Tuple[int, int]:
