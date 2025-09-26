@@ -156,7 +156,7 @@ class Game:
         dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
         dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
         self.player.move_with_collision(dx, dy,self.map)
-        self.player.update(dt)
+        self.player.update(dt, self.job_logic.getWeight())
 
         # 3) Actualiza Estadísticas
         self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
