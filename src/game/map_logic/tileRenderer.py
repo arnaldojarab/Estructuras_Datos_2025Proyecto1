@@ -196,7 +196,7 @@ class TileRenderer:
         # Caso 15
         elif left == right == "P" and (up in ("C", "P", None)) and (down in ("C", "P", None)):
             variants = [29, 30]
-            weights = [0.5]*2
+            weights = [0.2,0.8]
             return random.choices(variants, weights=weights, k=1)[0]
 
         # Caso 16

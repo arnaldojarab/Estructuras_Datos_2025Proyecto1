@@ -18,6 +18,9 @@ class WeatherVisuals:
         self._max_clouds = 0
         self.rain_timer = 0.0 
 
+        self.lightning_alpha = 0
+        self.lightning = None
+
         self.filter_alpha = 0       # empieza invisible
         self.target_alpha = 90      # opacidad final del filtro
         self.filter_speed = 30      # velocidad de transición (aumenta o baja este valor)
@@ -54,7 +57,7 @@ class WeatherVisuals:
                 c.start_transition(255, 0, duration=3)  # blanco
 
         elif next_condition in ("rain", "rain_light", "storm"):
-            self._max_clouds += 50
+            self._max_clouds += 85
             self._cloud_spawn_timer = 0
             for c in self.clouds:
                 c.start_transition(0, 255, duration=3)  # gris
@@ -82,6 +85,21 @@ class WeatherVisuals:
             nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray4.png")).convert_alpha())
 
         return num, nubes  
+    
+    def _select_lightning_image(self):
+        num= random.randint(0,4)
+        assets_dir = os.path.join(os.path.dirname(__file__), "..","..", "assets", "lightning")
+
+        if num == 0:
+            return pygame.image.load(os.path.join(assets_dir, "lightning_0.png")).convert_alpha()
+        elif num == 1:
+            return pygame.image.load(os.path.join(assets_dir, "lightning_1.png")).convert_alpha()
+        elif num == 2:
+            return pygame.image.load(os.path.join(assets_dir, "lightning_2.png")).convert_alpha()
+        elif num == 3:
+            return pygame.image.load(os.path.join(assets_dir, "lightning_3.png")).convert_alpha()
+        elif num == 4:
+            return pygame.image.load(os.path.join(assets_dir, "lightning_4.png")).convert_alpha()
         
 
 
@@ -171,13 +189,32 @@ class WeatherVisuals:
                     (160, 160, 220, 180),
                     (x1, y1),
                     (x1 + 3, y1 + 12),
-                    1,
+                    2,
                 )
 
-            if random.random() < 0.02:
+            
+            if random.random() < 0.009:
                 flash = pygame.Surface((w, h))
                 flash.fill((255, 255, 255))
                 screen.blit(flash, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+                
+                # activar relámpago
+                self.lightning_alpha = 255
+                self.lightning = self._select_lightning_image()
+
+            if self.lightning_alpha > 0 and self.lightning is not None:
+                
+                self.lightning.set_alpha(self.lightning_alpha)
+
+                # posición del relámpago (ej: centrado arriba)
+                lx = w // 2 - self.lightning.get_width() // 2
+                ly = 50  
+                screen.blit(self.lightning, (0,0))
+
+                # reducir alpha gradualmente (velocidad = 300 px/s aprox)
+                self.lightning_alpha -= 900 * dt
+                if self.lightning_alpha < 0:
+                    self.lightning_alpha = 0
 
         elif cond == "heat":
             overlay.fill((255, 200, 120, 60))
@@ -190,6 +227,9 @@ class WeatherVisuals:
 
         elif cond == "wind":
             overlay.fill((90, 120, 160, 40))
+        
+        elif cond == "cold":
+            overlay.fill((21, 188, 234, 50))
 
         # --- Filtro azul gradual aplicado en cualquier caso ---
         if self.filter_alpha > 0:
