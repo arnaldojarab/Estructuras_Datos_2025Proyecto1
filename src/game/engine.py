@@ -150,13 +150,27 @@ class Game:
 
         # 2) Lee input y aplica multiplicador de velocidad del clima
         keys = pygame.key.get_pressed()
-        base_px_per_sec = settings.TILE_SIZE * 8 # Modificar para ajustar velocidad base
-        #speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
+        base_px_per_sec = settings.TILE_SIZE * 8  # Modificar para ajustar velocidad base
         speed_mult = self.current_speed()
-        dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
-        dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
-        self.player.move_with_collision(dx, dy,self.map)
+
+        # Soporte flechas + WASD
+        right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+        left  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
+        down  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
+        up    = keys[pygame.K_UP]    or keys[pygame.K_w]
+
+        dx = (right - left) * base_px_per_sec * dt * speed_mult
+        dy = (down - up)   * base_px_per_sec * dt * speed_mult
+
+        # Normaliza velocidad en diagonal (sin ventaja al moverse en 45°)
+        if dx != 0 and dy != 0:
+            diag = 0.70710678  # 1/sqrt(2)
+            dx *= diag
+            dy *= diag
+
+        self.player.move_with_collision(dx, dy, self.map)
         self.player.update(dt, self.job_logic.getWeight())
+
 
         # 3) Actualiza Estadísticas
         self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
