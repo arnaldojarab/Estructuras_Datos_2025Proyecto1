@@ -1,5 +1,5 @@
 import pygame
-
+import os
 from . import settings
 from .map_logic.map_loader import MapLoader
 from .player import Player
@@ -26,6 +26,21 @@ class Game:
         window_h = self.map.height * settings.TILE_SIZE
         self.screen = pygame.display.set_mode((window_w, window_h))
         pygame.display.set_caption("Courier Quest")
+        # Cargar icono (ruta relativa a este archivo)
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            icon_path = os.path.normpath(
+                os.path.join(base_dir, "..", "assets", "images", "kimby_icon_3.png")
+            )
+            icon = pygame.image.load(icon_path).convert_alpha()
+
+            # Escalar a 32x32 para que se vea bien como ícono de ventana
+            icon = pygame.transform.smoothscale(icon, (32, 32))
+
+            pygame.display.set_icon(icon)
+        except Exception:
+            # Si falla, simplemente no cambia el icono
+            pass
 
         # 3) Reloj y jugador
         self.clock = pygame.time.Clock()
