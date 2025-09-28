@@ -12,6 +12,7 @@ from .statistics_logic.statistic_logic import statisticLogic
 from .jobs_logic.job_logic import JobLogic
 from .ui.inventory import InventoryUI
 from .ui.game_over import GameOverLogic
+from .ui.pause_menu import PauseMenu
 from .game_state import GameState
 
 class Game:
@@ -48,6 +49,7 @@ class Game:
 
         # 4) UI: menú + fuentes HUD 
         self.menu = MainMenu((window_w, window_h))
+        self.pause_menu = PauseMenu((window_w, window_h))
         self.hud_font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.small_font = pygame.font.Font(settings.UI_FONT_NAME, 18)  # para texto de clima
 
@@ -110,6 +112,8 @@ class Game:
             return(self._inventory_handle_event, self._inventory_update, self._inventory_draw)
         elif self.state == GameState.GAME_OVER:
           return (self._handle_event_gameover, self._update_gameover, self._draw_gameover)
+        elif self.state == GameState.PAUSED:
+            return (self._handle_event_paused, self._update_paused, self._draw_paused)
         else:  # GameState.PLAYING
             return (self._handle_event_play, self._update_play, self._draw_play)
         
@@ -136,18 +140,30 @@ class Game:
             self.state = GameState.PLAYING
 
     def _update_menu(self, dt: float):
-        # Aquí podrías animar el menú si quisieras
         pass
 
     def _draw_menu(self):
         # Panel + botón (overlay)
         self.menu.draw(self.screen)
+    
+    # --------- Estado: PAUSED ---------
+    def _handle_event_paused(self, event: pygame.event.Event):
+        self.pause_menu.handle_event(event)
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = GameState.PLAYING
+            return
+    
+    def _update_paused(self, dt: float):
+        pass
+    
+    def _draw_paused(self):
+        self.pause_menu.draw(self.screen)
 
     # --------- Estado: PLAYING ---------
     def _handle_event_play(self, event: pygame.event.Event):
         # Salir al menú
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self.state = GameState.MENU
+            self.state = GameState.PAUSED
             return
         
         if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
