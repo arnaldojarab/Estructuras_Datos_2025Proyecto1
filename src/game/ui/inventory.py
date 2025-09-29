@@ -192,3 +192,6 @@ class InventoryUI:
         self._jobs.sort(key=lambda j: getattr(j, "priority", 0), reverse=self._sort_desc)
         self.set_jobs(self._jobs, keep_selection=True)
 
+    def sort_by_deadline(self):
+        return
+

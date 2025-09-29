@@ -158,6 +158,10 @@ class WeatherManager:
 
         # Reiniciar la parte visual
         self.visuals = WeatherVisuals(window_w, window_h)
+
+    
+    def get_current_condition(self):
+        return self.current_condition
     
 
     # --------------------------

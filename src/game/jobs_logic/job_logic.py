@@ -241,3 +241,9 @@ class JobLogic:
 
         for i in reversed(to_remove_dropoffs):
             self._dropoff_markers.pop(i)
+
+
+    def getRepSpeed(self):
+        if self.reputation >= 90:
+            return 1.03
+        return 1.0

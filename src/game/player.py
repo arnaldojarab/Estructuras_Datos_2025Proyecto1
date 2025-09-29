@@ -38,13 +38,15 @@ class Player:
                     return True
         return False
 
-    def move_with_collision(self, dx, dy, game_map, stamina_cost=0.1):
+    def move_with_collision(self, dx, dy, game_map, weight, weather):
         """
         Movimiento con separación de ejes (X luego Y) para permitir “deslizamiento” suave
         al chocar con paredes. Bloquea el eje donde habría colisión.
         """
-        #if self.exhausted:
-            #return  # no se mueve si está exhausto
+
+        stamina_cost = 0.5
+
+        stamina_cost += self.get_stamina_extra(weight, weather)
 
         old_x, old_y = self.x, self.y
 
@@ -69,10 +71,8 @@ class Player:
         Recupera stamina con el tiempo.
         dt: delta time en segundos
         """
-        if peso > 4:
-            recover_rate = 3 * dt
-        else:
-            recover_rate = 5 * dt  # puntos por segundo (ajusta)
+
+        recover_rate = 10 * dt  # puntos por segundo (ajusta)
 
         
 
@@ -85,7 +85,7 @@ class Player:
         else:
             # Recupera poco a poco hasta 100
             if self.stamina < 100:
-                self.stamina = min(100, self.stamina + recover_rate * 0.5)
+                self.stamina = min(100, self.stamina + recover_rate)
 
         self._snapshot_timer += dt
         if self._snapshot_timer >= self._snapshot_every:
@@ -165,3 +165,29 @@ class Player:
             self._pos_history.pop()
             x, y = self._pos_history[-1]
             self.x, self.y = x, y
+
+    def get_stamina_extra(self, weight, weather):
+
+        stamina_cost = 0
+
+        if weight > 3:
+            weight_multiplier = weight - 3
+            stamina_cost += 0.2 * weight_multiplier
+
+        if weather == "rain" or weather == "wind":
+            stamina_cost += 0.1
+        elif weather == "storm":
+            stamina_cost += 0.3
+        elif weather == "heat":
+            stamina_cost += 0.2
+
+        return stamina_cost
+    
+
+    
+
+        
+        
+
+
+
