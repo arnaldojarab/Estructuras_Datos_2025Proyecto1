@@ -23,6 +23,8 @@ BUTTON_BG = (200, 200, 200)
 BUTTON_BG_SELECTED = (255, 220, 120)
 BTN_BG_HOVER = (233, 233, 233)
 TEXT_DARK = (10, 10, 10)
+TEXT_RED = (214, 0, 0)
+TEXT_GREEN = (0, 214, 93)
 UI_FONT_NAME = None            # None = fuente por defecto de pygame
 UI_FONT_SIZE = 28
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Optional
 import pygame
+from collections import deque
+from dataclasses import asdict
 
 from .job_loader import JobLoader
 from .job import Job
@@ -241,3 +243,114 @@ class JobLogic:
 
         for i in reversed(to_remove_dropoffs):
             self._dropoff_markers.pop(i)
+
+    def save_state(self) -> dict:
+        """
+        Serializa todo el estado mutable de JobLogic + JobLoader + OrderManager
+        en un único diccionario.
+        """
+        # 1) Jobs (catálogo maestro)
+        jobs_list = [job.to_dict() for job in self.jobs._jobs.values()]
+
+        # 2) OrderManager
+        orders_state = {
+            "inventory": list(self.orders.inventory),  # [job_id]
+            "history": [
+                {"job_id": h.job_id, "accepted": h.accepted, "onTime": h.onTime}
+                for h in self.orders.history
+            ],
+            "currentJob_id": self.orders.currentJob_id,
+            "release_queue": list(self.orders.release_queue),        # [job_id] en orden
+            "base_ids_sorted": list(self.orders._base_ids_sorted),  # respaldo para recarga cíclica
+        }
+
+        # 3) Markers
+        markers_state = {
+            "pickups": [asdict(m) for m in self._pickup_markers],     # [{px,py,job_id,expires_at}]
+            "dropoffs": [asdict(m) for m in self._dropoff_markers],   # [{px,py,job_id,due_at}]
+        }
+
+        # 4) Timers/estado de gameplay (solo los necesarios)
+        logic_state = {
+            "game_elapsed": self._game_elapsed,
+            "job_offer_elapsed": self._job_offer_elapsed,
+            "reputation": self.reputation,
+        }
+
+        return {
+            "jobs": jobs_list,
+            "orders": orders_state,
+            "markers": markers_state,
+            "logic": logic_state,
+        }
+
+
+    def load_state(self, state: dict) -> bool:
+        """
+        Restaura el estado desde un diccionario generado por save_state().
+        No refetchea del API. Devuelve True si tuvo éxito, False si falló.
+        """
+        try:
+            if not isinstance(state, dict):
+                return False
+
+            # 1) Jobs -> reconstruir catálogo maestro en JobLoader
+            self.jobs._jobs.clear()
+            for jd in state.get("jobs", []):
+                job = Job.from_dict(jd)
+                job.validate()
+                self.jobs._jobs[job.id] = job
+
+            # 2) OrderManager limpio con el repo actual y luego aplicar estado
+            self.orders = self.jobs.create_order_manager()
+
+            orders_state = state.get("orders", {})
+            # Inventario
+            self.orders.inventory = list(orders_state.get("inventory", []))
+            # Historial
+            self.orders.history.clear()
+            for h in orders_state.get("history", []):
+                self.orders.history.append(
+                    HistoryEntry(
+                        job_id=h["job_id"],
+                        accepted=bool(h["accepted"]),
+                        onTime=bool(h["onTime"]),
+                    )
+                )
+            # Current
+            self.orders.currentJob_id = orders_state.get("currentJob_id", None)
+            # Colas
+            self.orders._base_ids_sorted = list(orders_state.get("base_ids_sorted", []))
+            self.orders.release_queue = deque(orders_state.get("release_queue", []))
+
+            # 3) Markers -> dataclasses
+            self._pickup_markers.clear()
+            for m in state.get("markers", {}).get("pickups", []):
+                self._pickup_markers.append(
+                    PickupMarker(
+                        px=int(m["px"]),
+                        py=int(m["py"]),
+                        job_id=m["job_id"],
+                        expires_at=float(m["expires_at"]),
+                    )
+                )
+            self._dropoff_markers.clear()
+            for m in state.get("markers", {}).get("dropoffs", []):
+                self._dropoff_markers.append(
+                    DropoffMarker(
+                        px=int(m["px"]),
+                        py=int(m["py"]),
+                        job_id=m["job_id"],
+                        due_at=float(m["due_at"]),
+                    )
+                )
+
+            # 4) Timers/estado de gameplay: solo los que decidiste persistir
+            logic_state = state.get("logic", {})
+            self._game_elapsed = float(logic_state.get("game_elapsed", 0.0))
+            self._job_offer_elapsed = float(logic_state.get("job_offer_elapsed", 0.0))
+            self.reputation = int(logic_state.get("reputation", self.reputation))
+
+            return True
+        except Exception:
+            return False

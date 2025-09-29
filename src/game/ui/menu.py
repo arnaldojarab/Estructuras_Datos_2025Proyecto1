@@ -2,11 +2,16 @@ import os
 import pygame
 from .. import settings
 from .button import Button
+from typing import Optional, Callable
 
 class MainMenu:
-    def __init__(self, screen_size):
+    def __init__(self, screen_size, on_load: Optional[Callable[[str], bool]] = None):
         self.w, self.h = screen_size
         self.font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
+        self.on_load = on_load
+        
+        # phases: MAIN (botones principales) | LOAD (lista de partidas)
+        self.phase = "MAIN"
 
         # icon (will be loaded once)
         self.icon_surf = self._load_circular_icon(size=224)
@@ -16,6 +21,12 @@ class MainMenu:
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
         self.btn_start = None
         self.btn_load = None
+
+        # LOAD-phase UI
+        self.load_title = "Cargar partida"
+        self.save_buttons: list[Button] = []
+        self.load_feedback: Optional[str] = None  # para mostrar errores (opcional)
+
         self._layout((self.w, self.h))
 
     def _load_circular_icon(self, size: int) -> pygame.Surface | None:
@@ -51,7 +62,7 @@ class MainMenu:
         self.w, self.h = screen_size
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
 
-        # --- tamaños y separaciones ---
+        # MAIN buttons (centrados)
         btn_w, btn_h = 248, 54
         gap_y = 16                   # separación entre botones
         icon_gap = 48                # separación entre icono y primer botón
@@ -107,34 +118,130 @@ class MainMenu:
             fg=settings.TEXT_DARK,
         )
 
+        if self.phase == "LOAD":
+            self._build_save_list()
+
     def resize(self, screen_size):
         self._layout(screen_size)
 
     def draw(self, surface: pygame.Surface):
+        # Si el tamaño del surface cambió, adapta el layout al vuelo
         current_size = surface.get_size()
         if current_size != (self.w, self.h):
             self._layout(current_size)
 
-        # Fullscreen panel background
+        # Fondo
         pygame.draw.rect(surface, settings.MENU_BG, self.panel_rect)
+        
+        if self.phase == "MAIN":
+            # Icon (circular), if loaded
+            if self.icon_surf and self.icon_rect.width > 0:
+                surface.blit(self.icon_surf, (self.icon_rect.x, self.icon_rect.y))
+            self._draw_main(surface)
+        else:  # LOAD
+            self._draw_load(surface)
 
-        # Icon (circular), if loaded
-        if self.icon_surf and self.icon_rect.width > 0:
-            surface.blit(self.icon_surf, (self.icon_rect.x, self.icon_rect.y))
-
-        # Buttons
+    def _draw_main(self, surface: pygame.Surface):
         self.btn_start.draw(surface)
         self.btn_load.draw(surface)
 
+    def _draw_load(self, surface: pygame.Surface):
+        # Título
+        title_surf = self.font.render(self.load_title, True, settings.BUTTON_BG)
+        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, int(self.h * 0.18)))
+
+        # Feedback si no hay saves
+        if self.load_feedback:
+            fb = self.font.render(self.load_feedback, True, settings.TEXT_RED)
+            surface.blit(fb, (self.w // 2 - fb.get_width() // 2, self.h // 2 - fb.get_height() // 2))
+        else:
+          # Botones por archivo
+          for b in self.save_buttons:
+              b.draw(surface)
+
+
+        # Hint simple
+        hint = "ESC para volver"
+        hint_surf = pygame.font.Font(settings.UI_FONT_NAME, 18).render(hint, True, settings.BUTTON_BG)
+        surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2, int(self.h * 0.88)))
+
     def handle_event(self, event) -> str | None:
-        if self.btn_start.handle_event(event):
-            return "start"
-        if self.btn_load.handle_event(event):
-            # Placeholder action for "Cargar partida"
-            self.on_load_game()
-            return "load"
+        if self.phase == "MAIN":
+            if self.btn_start.handle_event(event):
+                return "start"
+            if self.btn_load.handle_event(event):
+                self.phase = "LOAD"
+                self._layout((self.w, self.h))
+                return None
+            return None
+
+        # LOAD phase
+        if self.phase == "LOAD":
+            # Volver con ESC
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.phase = "MAIN"
+                return None
+
+            # Click sobre un save
+            for b in self.save_buttons:
+                if b.handle_event(event):
+                    filename = b.text  # viene con .sav
+                    ok = False
+                    if self.on_load:
+                        ok = bool(self.on_load(filename))
+                    if ok:
+                        return "loaded"   # el engine pone GameState.PLAYING
+                    else:
+                        # muestra feedback, no cambia de pantalla
+                        self.load_feedback = "No se pudo cargar la partida."
+                        return None
+            return None
+
         return None
 
     def on_load_game(self):
         """Placeholder for Load Game action (no-op for now)."""
         pass
+    
+    def _build_save_list(self):
+        """Crea botones para cada .sav en /saves, centrados en vertical."""
+        self.save_buttons.clear()
+        self.load_feedback = None
+
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        saves_dir = os.path.join(base_dir, "..", "..", "..", "saves")
+
+        try:
+            entries = []
+            if os.path.isdir(saves_dir):
+                for name in os.listdir(saves_dir):
+                    if name.lower().endswith(".sav"):
+                        entries.append(name)
+            entries.sort(key=str.lower)
+        except Exception:
+            entries = []
+
+        # Crear botones verticales centrados
+        btn_w, btn_h = 320, 48
+        total_h = len(entries) * btn_h + max(0, (len(entries) - 1)) * 10
+        y0 = self.h // 2 - total_h // 2
+        x = self.w // 2 - btn_w // 2
+
+        for idx, fname in enumerate(entries):
+            y = y0 + idx * (btn_h + 10)
+            self.save_buttons.append(
+                Button(
+                    rect=pygame.Rect(x, y, btn_w, btn_h),
+                    text=fname,  # muestra el nombre con .sav
+                    font=self.font,
+                    bg=settings.BUTTON_BG,
+                    bg_hover=settings.BTN_BG_HOVER,
+                    fg=settings.TEXT_DARK
+                )
+            )
+
+        # Si no hay saves, deja un feedback mínimo (opcional)
+        if not self.save_buttons:
+            self.load_feedback = "No se encontraron partidas guardadas."
+
