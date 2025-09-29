@@ -1,5 +1,8 @@
 import pygame
 import os
+import pickle
+import tempfile
+import re
 from . import settings
 from .map_logic.map_loader import MapLoader
 from .player import Player
@@ -51,8 +54,7 @@ class Game:
         self.player = Player((0, 0))
 
         # 4) UI: menú + fuentes HUD 
-        self.menu = MainMenu((window_w, window_h))
-        self.pause_menu = PauseMenu((window_w, window_h))
+        self.menu = MainMenu((window_w, window_h), self._load_game)
         self.hud_font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.small_font = pygame.font.Font(settings.UI_FONT_NAME, 18)  # para texto de clima
 
@@ -143,10 +145,13 @@ class Game:
 
     # --------- Estado: MENU ---------
     def _handle_event_menu(self, event: pygame.event.Event):
-        action = self.menu.handle_event(event)
-        if action == "start":
-            self._reset_run()
-            self.state = GameState.PLAYING
+      action = self.menu.handle_event(event)
+      if action == "start":
+          self._reset_run()
+          self.state = GameState.PLAYING
+      elif action == "loaded":
+          # ya se llamo a _load_game desde el menú y devolvió True
+          self.state = GameState.PLAYING
 
     def _update_menu(self, dt: float):
         pass
@@ -157,7 +162,9 @@ class Game:
     
     # --------- Estado: PAUSED ---------
     def _handle_event_paused(self, event: pygame.event.Event):
-        self.pause_menu.handle_event(event)
+        action = self.pause_menu.handle_event(event)
+        if action == "exit":
+            self.state = GameState.MENU
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.PLAYING
             return
@@ -246,7 +253,6 @@ class Game:
     def _draw_gameover(self):
         self.game_over.draw(self.screen)
 
-
     def _draw_weather(self):
         # HUD: clima (condición, multiplicador y tiempo restante del estado)
         info = self.weather.debug_info()
@@ -319,6 +325,109 @@ class Game:
       score = score_base + bonus_tiempo - penalizaciones
       """
       return self.job_logic.getMoney()
+    
+    def _save_game(self, filename: str) -> bool:
+      # --- sanea y normaliza el nombre ---
+      def _sanitize(name: str) -> str:
+          name = (name or "slot-1").strip()
+          # Solo letras/números/espacios/guion/guion_bajo/punto
+          name = re.sub(r"[^A-Za-z0-9 _\-.]", "_", name)
+          # Colapsa espacios múltiples
+          name = re.sub(r"\s+", " ", name)
+          return name
+
+      safe_name = _sanitize(filename)
+      if not safe_name.lower().endswith(".sav"):
+          safe_name += ".sav"
+
+      # Directorio destino absoluto: /saves
+      base_dir = os.path.dirname(os.path.abspath(__file__))
+      # saves_dir = os.path.join(os.sep, "saves")
+      saves_dir = os.path.join(base_dir, "..", "..", "saves")
+      os.makedirs(saves_dir, exist_ok=True)
+      final_path = os.path.join(saves_dir, safe_name)
+
+      data = self.get_current_data()
+
+      # Escritura atómica: primero a archivo temporal, luego replace
+      tmp_file = None
+      try:
+          tmp = tempfile.NamedTemporaryFile("wb", dir=saves_dir, delete=False)
+          tmp_file = tmp.name
+          with tmp:
+              pickle.dump(data, tmp, protocol=pickle.HIGHEST_PROTOCOL)
+          os.replace(tmp_file, final_path)
+          tmp_file = None
+          return True
+      except Exception:
+          return False
+      finally:
+          # Limpieza si falló antes del replace
+          if tmp_file and os.path.exists(tmp_file):
+              try:
+                  os.remove(tmp_file)
+              except Exception:
+                  pass
+
+    def _load_game(self, filename: str) -> bool:
+      if not filename.lower().endswith(".sav"):
+          filename += ".sav"
+
+      # Same directory convention as _save_game
+      base_dir = os.path.dirname(os.path.abspath(__file__))
+      saves_dir = os.path.join(base_dir, "..", "..", "saves")
+      path = os.path.join(saves_dir, filename)
+
+      try:
+          if not os.path.exists(path):
+              return False
+
+          with open(path, "rb") as f:
+              state = pickle.load(f)
+
+          if not isinstance(state, dict):
+              return False
+
+          self.set_current_data(state)
+          return True
+
+      except Exception as e:
+          return False
+
+    def get_current_data(self) -> dict:
+        """Prepara un dict con el estado actual para guardado."""
+        return {
+            #"map_logic": self.map.save_state(),
+            #"player": self.player.save_state(),
+            "statistics": self.statistics_logic.save_state(),
+            "job_logic": self.job_logic.save_state(),
+            #"weather": self.weather.save_state(),
+        }
+    
+    def set_current_data(self, data: dict) -> bool:
+        """Restaura el estado desde un dict (cargado de archivo)."""
+        if not isinstance(data, dict):
+            return False
+
+        # Validar presencia y tipo de cada sub-estado (debe ser dict)
+        #map_state       = data.get("map_logic")
+        #player_state    = data.get("player")
+        stats_state     = data.get("statistics")
+        jobs_state      = data.get("job_logic")
+        #weather_state   = data.get("weather")
+
+        #if not all(isinstance(x, dict) for x in (map_state, player_state, stats_state, jobs_state, weather_state)):
+            #return False
+
+        ok = True
+
+        #ok &= bool(self.map.load_state(map_state))
+        #ok &= bool(self.player.load_state(player_state))
+        ok &= bool(self.job_logic.load_state(jobs_state))
+        #ok &= bool(self.weather.load_state(weather_state))
+        ok &= bool(self.statistics_logic.load_state(stats_state))
+
+        return ok
 
 
 

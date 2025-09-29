@@ -40,6 +40,8 @@ class statisticLogic:
     def reset(self) -> None:
         """Reinicia TODAS las estadísticas manejadas por esta clase."""
         self._reset_timer()
+        self._reset_money()
+        self._reset_reputation()  
 
     def update(self, dt: float, money: float = 0.0, reputation: int = 70) -> None:
         """Actualiza TODAS las estadísticas frame a frame."""
@@ -132,6 +134,26 @@ class statisticLogic:
                     continue
                 surface.blit(txt_out, (x + ox, y + oy))
         surface.blit(txt_main, (x, y))
+    
+    def set_time_left(self, seconds: float) -> None:
+        """
+        Set the remaining time on the countdown (in seconds).
+        Clamps to >= 0. If the timer tracks an initial duration, also clamps to that.
+        """
+        s = float(seconds)
+        # Clamp lower bound
+        s = 0.0 if s < 0.0 else s
+        # Optional upper bound if the class has a known start/total duration
+        if hasattr(self, "_start_seconds"):
+            s = min(s, float(self._start_seconds))
+        elif hasattr(self, "total_seconds"):
+            s = min(s, float(self.total_seconds))
+
+        # Assign and update finished state if the class uses it
+        setattr(self, "time_left", s)
+        if hasattr(self, "_finished"):
+            self._finished = (s <= 0.0)
+
 
     # ---------------- Extras públicos útiles ----------------
     def finished(self) -> bool:
@@ -140,3 +162,46 @@ class statisticLogic:
     @property
     def time_left(self) -> float:
         return self._timer.time_left
+    
+    def save_state(self) -> dict:
+        """
+        Serializa SOLO el estado mutable necesario para reanudar:
+        - tiempo restante del temporizador
+        - dinero y reputación actuales
+        No guarda align/margins/fonts ni otros valores del ctor.
+        """
+        return {
+            "timer": {
+                "time_left": float(self._timer.time_left),
+            },
+            "stats": {
+                "money": float(self._money),
+                "reputation": int(self._reputation),
+            },
+        }
+
+
+    def load_state(self, state: dict) -> bool:
+        """
+        Restaura el estado desde un dict. No lanza excepciones; devuelve False si falla.
+        """
+        try:
+            if not isinstance(state, dict):
+                return False
+
+            timer = state.get("timer", {})
+            stats = state.get("stats", {})
+
+            # 1) Temporizador
+            if "time_left" in timer:
+                self._timer = CountdownTimer(float(timer["time_left"]))
+
+            # 2) Dinero y reputación
+            if "money" in stats:
+                self._update_money(float(stats["money"]))
+            if "reputation" in stats:
+                self._update_reputation(int(stats["reputation"]))
+
+            return True
+        except Exception:
+            return False
