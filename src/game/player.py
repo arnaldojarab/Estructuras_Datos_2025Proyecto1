@@ -184,7 +184,57 @@ class Player:
         return stamina_cost
     
 
+    #Guardado y Cargado del Player:
+
+    def save_state(self) -> dict:
+        """Devuelve un dict serializable con el estado actual del jugador."""
+        return {
+            "ver": 1,  # por si luego cambias el formato
+            "pos": [round(self.x, 3), round(self.y, 3)],
+            "radius": int(self.radius),
+            "stamina": int(self.stamina),
+            "exhausted": bool(self.exhausted),
+
+            # --- historial de posiciones (ring buffer) ---
+            "snapshots": {
+                "maxlen": self._pos_history.maxlen,
+                "every": float(self._snapshot_every),
+                "timer": float(self._snapshot_timer),
+                # Convertimos deque[tuple(x,y)] -> list[list[x,y]]
+                "items": [[round(px, 3), round(py, 3)] for (px, py) in self._pos_history],
+            },
+        }
+
+    def load_state(self, data: dict) -> bool:
+        """Restaura el estado desde un dict producido por save_state()."""
+        try:
+            pos = data.get("pos", [self.x, self.y])
+            self.x = float(pos[0]); self.y = float(pos[1])
+
+            self.radius = int(data.get("radius", self.radius))
+            self.stamina = int(data.get("stamina", self.stamina))
+            self.exhausted = bool(data.get("exhausted", self.exhausted))
+
+            snaps = data.get("snapshots", {})
+            maxlen = int(snaps.get("maxlen", 50))
+            self._snapshot_every = float(snaps.get("every", getattr(self, "_snapshot_every", 1.5)))
+            self._snapshot_timer = float(snaps.get("timer", 0.0))
+
+            items = snaps.get("items", [[self.x, self.y]])
+            # list[list[x,y]] -> deque[tuple(x,y)]
+            self._pos_history = deque(( (float(px), float(py)) for px, py in items ), maxlen=maxlen)
+
+            # Asegura que haya al menos un punto
+            if not self._pos_history:
+                self._pos_history.append((self.x, self.y))
+
+            return True
+        except Exception as e:
+            print(f"Player.load_state error: {e}")
+            return False
     
+
+
 
         
         

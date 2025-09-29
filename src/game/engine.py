@@ -58,6 +58,8 @@ class Game:
         self.hud_font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.small_font = pygame.font.Font(settings.UI_FONT_NAME, 18)  # para texto de clima
 
+        self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font)
+
         # 5) Estado + timer
         self.state = GameState.MENU
         self.statistics_logic = statisticLogic()
