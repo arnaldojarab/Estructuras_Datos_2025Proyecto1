@@ -162,7 +162,6 @@ class InventoryUI:
                 f"ID: {getattr(job,'id','')}",
                 f"Payout: ${getattr(job,'payout',0):.0f}",
                 f"Peso: {getattr(job,'weight',0):.1f} kg   Pri: {getattr(job,'priority',0)}",
-                f"Pickup: {getattr(job,'pickup',('?','?'))}  ->  Dropoff: {getattr(job,'dropoff',('?','?'))}",
                 "ENTER/ESPACIO: establecer como 'current job'"
             ]
             base_x = self.panel_rect.x + self.padding

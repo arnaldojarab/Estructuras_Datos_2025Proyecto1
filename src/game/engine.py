@@ -14,8 +14,11 @@ from .ui.inventory import InventoryUI
 from .ui.game_over import GameOverLogic
 from .game_state import GameState
 
+from .sounds import SoundManager
+
 class Game:
     def __init__(self):
+        pygame.mixer.pre_init(44100, -16, 2, 256)
         pygame.init()
 
         # 1) Cargar mapa
@@ -53,6 +56,11 @@ class Game:
 
         # 9) Game Over Logic
         self.game_over = GameOverLogic(self.hud_font, self.small_font)
+
+        #10) SoundManager para reproducir sonidos jeje
+        pygame.mixer.set_num_channels(16)  # opcional, por si hay varios SFX
+        self.sfx = SoundManager()    
+
 
     # --------- Ciclo principal ---------
     def run(self):
@@ -141,8 +149,20 @@ class Game:
 
         # Deshacer posición con tecla C
         if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
-            self.player.undo_position()
+            # si tu undo_position() devuelve True cuando logró deshacer, úsalo
+            try:
+                did_undo = self.player.undo_position()
+            except Exception:
+                did_undo = False  # evita crashear si algo falla accidentalmente
+
+            if did_undo is None or did_undo is True:
+                # Sonar trompeta con pequeño fade para evitar "click"
+                self.sfx.play("undo", fade_ms=20)
+
+                tx = int(self.player.x // settings.TILE_SIZE)
+                ty = int(self.player.y // settings.TILE_SIZE)
             return
+        
 
     def _update_play(self, dt: float):
         # 1) Actualiza clima (sin dibujar)
@@ -166,6 +186,7 @@ class Game:
         
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
+
 
     # --------- Estado: GAME OVER ---------
     def _handle_event_gameover(self, event: pygame.event.Event):
@@ -198,6 +219,7 @@ class Game:
 
         self.job_logic.draw(self.screen)
         self.statistics_logic.draw(self.screen)
+
 
     # --------- Clima ---------
     def _update_weather(self, dt: float):
