@@ -1,5 +1,5 @@
 import pygame
-
+import os
 from . import settings
 from .map_logic.map_loader import MapLoader
 from .player import Player
@@ -12,6 +12,7 @@ from .statistics_logic.statistic_logic import statisticLogic
 from .jobs_logic.job_logic import JobLogic
 from .ui.inventory import InventoryUI
 from .ui.game_over import GameOverLogic
+from .ui.pause_menu import PauseMenu
 from .game_state import GameState
 
 from .sounds import SoundManager
@@ -29,6 +30,21 @@ class Game:
         window_h = self.map.height * settings.TILE_SIZE
         self.screen = pygame.display.set_mode((window_w, window_h))
         pygame.display.set_caption("Courier Quest")
+        # Cargar icono (ruta relativa a este archivo)
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            icon_path = os.path.normpath(
+                os.path.join(base_dir, "..", "assets", "images", "kimby_icon_3.png")
+            )
+            icon = pygame.image.load(icon_path).convert_alpha()
+
+            # Escalar a 32x32 para que se vea bien como ícono de ventana
+            icon = pygame.transform.smoothscale(icon, (32, 32))
+
+            pygame.display.set_icon(icon)
+        except Exception:
+            # Si falla, simplemente no cambia el icono
+            pass
 
         # 3) Reloj y jugador
         self.clock = pygame.time.Clock()
@@ -36,6 +52,7 @@ class Game:
 
         # 4) UI: menú + fuentes HUD 
         self.menu = MainMenu((window_w, window_h))
+        self.pause_menu = PauseMenu((window_w, window_h))
         self.hud_font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.small_font = pygame.font.Font(settings.UI_FONT_NAME, 18)  # para texto de clima
 
@@ -103,6 +120,8 @@ class Game:
             return(self._inventory_handle_event, self._inventory_update, self._inventory_draw)
         elif self.state == GameState.GAME_OVER:
           return (self._handle_event_gameover, self._update_gameover, self._draw_gameover)
+        elif self.state == GameState.PAUSED:
+            return (self._handle_event_paused, self._update_paused, self._draw_paused)
         else:  # GameState.PLAYING
             return (self._handle_event_play, self._update_play, self._draw_play)
         
@@ -129,18 +148,30 @@ class Game:
             self.state = GameState.PLAYING
 
     def _update_menu(self, dt: float):
-        # Aquí podrías animar el menú si quisieras
         pass
 
     def _draw_menu(self):
         # Panel + botón (overlay)
         self.menu.draw(self.screen)
+    
+    # --------- Estado: PAUSED ---------
+    def _handle_event_paused(self, event: pygame.event.Event):
+        self.pause_menu.handle_event(event)
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.state = GameState.PLAYING
+            return
+    
+    def _update_paused(self, dt: float):
+        pass
+    
+    def _draw_paused(self):
+        self.pause_menu.draw(self.screen)
 
     # --------- Estado: PLAYING ---------
     def _handle_event_play(self, event: pygame.event.Event):
         # Salir al menú
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-            self.state = GameState.MENU
+            self.state = GameState.PAUSED
             return
         
         if event.type == pygame.KEYDOWN and event.key == pygame.K_e:
@@ -170,13 +201,27 @@ class Game:
 
         # 2) Lee input y aplica multiplicador de velocidad del clima
         keys = pygame.key.get_pressed()
-        base_px_per_sec = settings.TILE_SIZE * 8 # Modificar para ajustar velocidad base
-        #speed_mult = self.weather.current_multiplier()  # de tu WeatherManager
+        base_px_per_sec = settings.TILE_SIZE * 8  # Modificar para ajustar velocidad base
         speed_mult = self.current_speed()
-        dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * base_px_per_sec * dt * speed_mult
-        dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * base_px_per_sec * dt * speed_mult
-        self.player.move_with_collision(dx, dy,self.map)
+
+        # Soporte flechas + WASD
+        right = keys[pygame.K_RIGHT] or keys[pygame.K_d]
+        left  = keys[pygame.K_LEFT]  or keys[pygame.K_a]
+        down  = keys[pygame.K_DOWN]  or keys[pygame.K_s]
+        up    = keys[pygame.K_UP]    or keys[pygame.K_w]
+
+        dx = (right - left) * base_px_per_sec * dt * speed_mult
+        dy = (down - up)   * base_px_per_sec * dt * speed_mult
+
+        # Normaliza velocidad en diagonal (sin ventaja al moverse en 45°)
+        if dx != 0 and dy != 0:
+            diag = 0.70710678  # 1/sqrt(2)
+            dx *= diag
+            dy *= diag
+
+        self.player.move_with_collision(dx, dy, self.map)
         self.player.update(dt, self.job_logic.getWeight())
+
 
         # 3) Actualiza Estadísticas
         self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())

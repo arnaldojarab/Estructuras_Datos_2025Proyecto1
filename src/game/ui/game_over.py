@@ -194,8 +194,8 @@ class GameOverLogic:
     def _prepare_rows(self, player_name: str, player_score: float) -> None:
         """
         Build table rows:
-          - If player in top-5: show top-5 including player (highlighted).
-          - Else: show base top-5, then a dotted '...' row, then player's row highlighted.
+          - If player in top-3: show top-3 including player (highlighted).
+          - Else: show base top-3, then a dotted '...' row, then player's row highlighted.
         Each row dict: {rank: int|None, name: str, score: float|None, is_player: bool}
         """
         base = list(self._base_scores)
@@ -204,12 +204,12 @@ class GameOverLogic:
         candidate = base + [{"name": player_name, "score": player_score, "is_player": True}]
         candidate.sort(key=lambda r: r["score"], reverse=True)
 
-        makes_top5 = any(r.get("is_player") for r in candidate[:5])
+        top3 = candidate[:3]
+        makes_top3 = any(r.get("is_player") for r in top3)
         rows: List[Dict] = []
 
-        if makes_top5:
-            top5 = candidate[:5]
-            for idx, r in enumerate(top5, start=1):
+        if makes_top3:
+            for idx, r in enumerate(top3, start=1):
                 rows.append({
                     "rank": idx,
                     "name": r["name"],
@@ -217,7 +217,9 @@ class GameOverLogic:
                     "is_player": r.get("is_player", False),
                 })
         else:
-            for idx, r in enumerate(base, start=1):
+            player_rank = next((idx for idx, r in enumerate(candidate, start=1) if r.get("is_player")), None)
+
+            for idx, r in enumerate(top3, start=1):
                 rows.append({
                     "rank": idx,
                     "name": r["name"],
@@ -225,7 +227,7 @@ class GameOverLogic:
                     "is_player": False,
                 })
             rows.append({"rank": None, "name": "...", "score": None, "is_player": False})
-            rows.append({"rank": None, "name": player_name, "score": player_score, "is_player": True})
+            rows.append({"rank": player_rank, "name": player_name, "score": player_score, "is_player": True})
 
         self._rows = rows
         self._continue_rect = None  # will be set during draw
@@ -233,22 +235,49 @@ class GameOverLogic:
     # -------- Rendering helpers --------
 
     def _draw_ask(self, screen: pygame.Surface, W: int, H: int) -> None:
-        prompt = "¿Desea guardar su puntaje?"
-        prompt_surf = self.hud_font.render(prompt, True, settings.GO_TEXT_COLOR)
-        screen.blit(prompt_surf, (W // 2 - prompt_surf.get_width() // 2, int(H * GO_ASK_PROMPT_Y_RATIO)))
+      prompt = "¿Desea guardar su puntaje?"
+      prompt_surf = self.hud_font.render(prompt, True, settings.GO_TEXT_COLOR)
+      screen.blit(prompt_surf, (W // 2 - prompt_surf.get_width() // 2, int(H * GO_ASK_PROMPT_Y_RATIO)))
 
-        labels = ["Sí", "No"]
-        y = int(H * GO_ASK_BUTTONS_Y_RATIO)
-        center_x = W // 2
-        for i, label in enumerate(labels):
-            text = self.hud_font.render(label, True, settings.TEXT_DARK)
-            box_w = text.get_width() + GO_BUTTON_PADDING_X * 2
-            box_h = text.get_height() + GO_BUTTON_PADDING_Y * 2
-            x = center_x + (i - 0.5) * GO_ASK_BUTTON_SPACING - box_w // 2
-            rect = pygame.Rect(int(x), y, int(box_w), int(box_h))
-            bg = settings.BUTTON_BG_SELECTED if i == self._choice_idx else settings.BUTTON_BG
-            pygame.draw.rect(screen, bg, rect, border_radius=GO_BUTTON_BORDER_RADIUS)
-            screen.blit(text, (rect.centerx - text.get_width() // 2, rect.centery - text.get_height() // 2))
+      labels = ["Sí", "No"]
+      y = int(H * GO_ASK_BUTTONS_Y_RATIO)
+      center_x = W // 2
+
+      mouse_pos = pygame.mouse.get_pos()
+      mouse_pressed = pygame.mouse.get_pressed(num_buttons=3)
+
+      hover_idx = None  # track which button is hovered this frame
+
+      for i, label in enumerate(labels):
+          text = self.hud_font.render(label, True, settings.TEXT_DARK)
+          box_w = text.get_width() + GO_BUTTON_PADDING_X * 2
+          box_h = text.get_height() + GO_BUTTON_PADDING_Y * 2
+          x = center_x + (i - 0.5) * GO_ASK_BUTTON_SPACING - box_w // 2
+          rect = pygame.Rect(int(x), y, int(box_w), int(box_h))
+
+          # Hover detection
+          is_hovered = rect.collidepoint(mouse_pos)
+          if is_hovered:
+              hover_idx = i  # remember hovered to force selection below
+
+          # Visual selection: hovered OR current keyboard selection
+          selected = is_hovered or (i == self._choice_idx)
+          bg = settings.GO_BUTTON_BG_SELECTED if selected else settings.BUTTON_BG
+          pygame.draw.rect(screen, bg, rect, border_radius=GO_BUTTON_BORDER_RADIUS)
+          screen.blit(text, (rect.centerx - text.get_width() // 2, rect.centery - text.get_height() // 2))
+
+          # Click on hovered acts like pressing Enter on that option
+          if is_hovered and mouse_pressed[0]:
+              if i == 1:  # "No"
+                  self._done = True
+              else:       # "Sí"
+                  self._phase = "NAME"
+
+      # If hovering any button, make it the sole selected one (deselect the other)
+      if hover_idx is not None:
+          self._choice_idx = hover_idx
+
+
 
     def _draw_name(self, screen: pygame.Surface, W: int, H: int) -> None:
         prompt = "Ingrese su nombre (1–4):"
@@ -331,3 +360,28 @@ class GameOverLogic:
         screen.blit(btn_surf, (btn_rect.centerx - btn_surf.get_width() // 2,
                                btn_rect.centery - btn_surf.get_height() // 2))
         self._continue_rect = btn_rect
+
+        # Continue button
+        btn_label = "Continuar"
+        btn_surf = self.hud_font.render(btn_label, True, settings.TEXT_DARK)
+        btn_w = btn_surf.get_width() + GO_BUTTON_PADDING_X * 2
+        btn_h = btn_surf.get_height() + GO_BUTTON_PADDING_Y * 2
+        btn_x = W // 2 - btn_w // 2
+        btn_y = int(H * GO_CONTINUE_BTN_Y_RATIO)
+        btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+
+        # Hover detection
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovered = btn_rect.collidepoint(mouse_pos)
+
+        # Use selected background on hover
+        bg = settings.BTN_BG_HOVER if is_hovered else settings.BUTTON_BG
+        pygame.draw.rect(screen, bg, btn_rect, border_radius=GO_BUTTON_BORDER_RADIUS)
+
+        screen.blit(
+            btn_surf,
+            (btn_rect.centerx - btn_surf.get_width() // 2,
+            btn_rect.centery - btn_surf.get_height() // 2)
+        )
+        self._continue_rect = btn_rect
+
