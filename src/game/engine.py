@@ -58,6 +58,8 @@ class Game:
         self.hud_font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.small_font = pygame.font.Font(settings.UI_FONT_NAME, 18)  # para texto de clima
 
+        self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font)
+
         # 5) Estado + timer
         self.state = GameState.MENU
         self.statistics_logic = statisticLogic()
@@ -82,6 +84,7 @@ class Game:
 
         #11) Pausa Logic
         self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font, self._save_game)
+        self.sfx.set_master_volume(1)
 
 
     # --------- Ciclo principal ---------
@@ -198,7 +201,7 @@ class Game:
 
             if did_undo is None or did_undo is True:
                 # Sonar trompeta con pequeño fade para evitar "click"
-                self.sfx.play("undo", fade_ms=20)
+                #self.sfx.play("undo", fade_ms=20)
 
                 tx = int(self.player.x // settings.TILE_SIZE)
                 ty = int(self.player.y // settings.TILE_SIZE)
@@ -229,7 +232,7 @@ class Game:
             dx *= diag
             dy *= diag
 
-        self.player.move_with_collision(dx, dy, self.map)
+        self.player.move_with_collision(dx, dy, self.map, self.job_logic.getWeight(), self.weather.get_current_condition())
         self.player.update(dt, self.job_logic.getWeight())
 
 
@@ -284,7 +287,7 @@ class Game:
         # Si más adelante migras a update(dt), cámbialo por:
     
     def current_speed(self):
-        return self.player.get_speed(self.job_logic.getWeight()) * self.weather.current_multiplier()  * self.map.surface_weight(self.player.x, self.player.y)
+        return self.player.get_speed(self.job_logic.getWeight()) * self.weather.current_multiplier()  * self.map.surface_weight(self.player.x, self.player.y) * self.job_logic.getRepSpeed() 
 
 
     def _inventory_handle_event(self, event):

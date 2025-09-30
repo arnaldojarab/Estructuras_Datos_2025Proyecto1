@@ -153,12 +153,19 @@ class MapLoader:
             "legend": self.legend
         }
 
-    def load_map(self, data: dict):
+    def load_map(self, state: dict):
         """
         Carga un mapa desde un dict previamente guardado con save_map().
         """
-        self.meta = data.get("meta", {})
-        self.tiles = data.get("tiles", [])
-        self.legend = data.get("legend", {})
-        self._w = self.meta.get("width", len(self.tiles[0]) if self.tiles else 0)
-        self._h = self.meta.get("height", len(self.tiles) if self.tiles else 0)
+        try:
+            if not isinstance(state, dict):
+                return False
+            self.meta = state.get("meta", {})
+            self.tiles = state.get("tiles", [])
+            self.legend = state.get("legend", {})
+            self._w = self.meta.get("width", len(self.tiles[0]) if self.tiles else 0)
+            self._h = self.meta.get("height", len(self.tiles) if self.tiles else 0)
+
+            return True
+        except Exception:
+            return False
