@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Optional
 import pygame
+import os
 from collections import deque
 from dataclasses import asdict
 
@@ -87,19 +88,31 @@ class JobLogic:
         # Proximidades (pickup y dropoff)
         self._check_proximity(player_x, player_y)
 
+    def _select_Image(self, type):
+        assets_dir = os.path.join(os.path.dirname(__file__), "..","..", "assets", "images")
+
+        if type == 0:
+            return pygame.image.load(os.path.join(assets_dir, "icon_0.png")).convert_alpha()
+        elif type == 1:
+            return pygame.image.load(os.path.join(assets_dir, "icon_1.png")).convert_alpha()
+
+
     def draw(self, screen: pygame.Surface) -> None:
-        """Dibuja markers de pickups (amarillo) y dropoffs (verde)."""
+
+        dropoff_icon = self._select_Image(0)  
+        pickup_icon = self._select_Image(1) 
+
         # Pickups
         for m in self._pickup_markers:
-            pygame.draw.circle(screen, (255, 255, 0), (m.px, m.py), 6)
-            pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
+            rect = pickup_icon.get_rect(center=(m.px, m.py))
+            screen.blit(pickup_icon, rect)
 
         # Dropoffs (solamente el current)
         currentJob = self.orders.getCurrentJob()
         if currentJob:
             m = next((d for d in self._dropoff_markers if d.job_id == currentJob.id), None)
-            pygame.draw.circle(screen, (0, 200, 0), (m.px, m.py), 6)
-            pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
+            rect = dropoff_icon.get_rect(center=(m.px, m.py))
+            screen.blit(dropoff_icon, rect)
             
         # Dropoffs (todos)
         # for m in self._dropoff_markers:

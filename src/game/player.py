@@ -1,5 +1,7 @@
 from collections import deque
 import pygame
+import os
+import math
 
 from . import settings
 
@@ -15,11 +17,25 @@ class Player:
         self.stamina = 100        # valor inicial
         self.exhausted = False    # estado actual
 
+        # --- imagen del jugador ---
+        self.base_image = self._select_Image()
+        self.base_image = pygame.transform.scale(self.base_image, (ts*2, ts*2))
+        self.image = self.base_image
+        self.rect = self.image.get_rect(center=(self.x, self.y))
+
+        # Ángulo actual en grados
+        self.angle = 0  
+
          # --- historial de posiciones para "Ctrl+Z" ---
         self._pos_history = deque(maxlen=50)  # ring buffer
         self._snapshot_timer = 0.0
         self._snapshot_every = 1.5           # segundos entre snapshots
         self._pos_history.append((self.x, self.y))  # punto de partida
+
+    def _select_Image(self):
+        assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "images")
+        return  pygame.image.load(os.path.join(assets_dir, "player.png")).convert_alpha()
+
 
     def _collides_at(self, nx, ny, game_map):
         """
@@ -59,6 +75,19 @@ class Player:
         ny = self.y + dy
         if not self._collides_at(self.x, ny, game_map):
             self.y = ny
+
+
+        # Si se movió, actualiza dirección (ángulo)
+        if dx != 0 or dy != 0:
+            # atan2 devuelve radianes, se convierte a grados
+            self.angle = -math.degrees(math.atan2(dy, dx))  
+            # Rotar la imagen manteniendo el centro
+            self.image = pygame.transform.rotate(self.base_image, self.angle)
+            self.rect = self.image.get_rect(center=(self.x, self.y))
+        else:
+            # Solo actualizar rect sin rotar
+            self.rect.center = (self.x, self.y)
+
 
         # Si efectivamente se movió, baja resistencia
         if (self.x, self.y) != (old_x, old_y):
@@ -117,7 +146,7 @@ class Player:
 
 
     def draw(self, screen):
-        pygame.draw.circle(screen, (200, 230, 255), (int(self.x), int(self.y)), self.radius)
+        screen.blit(self.image, self.rect)
 
 
     def get_speed(self, peso_total):
