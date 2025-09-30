@@ -402,11 +402,11 @@ class Game:
     def get_current_data(self) -> dict:
         """Prepara un dict con el estado actual para guardado."""
         return {
-            #"map_logic": self.map.save_state(),
-            #"player": self.player.save_state(),
+            "map_logic": self.map.save_map(),
+            "player": self.player.save_state(),
             "statistics": self.statistics_logic.save_state(),
             "job_logic": self.job_logic.save_state(),
-            #"weather": self.weather.save_state(),
+            "weather": self.weather.save_state(),
         }
     
     def set_current_data(self, data: dict) -> bool:
@@ -415,21 +415,21 @@ class Game:
             return False
 
         # Validar presencia y tipo de cada sub-estado (debe ser dict)
-        #map_state       = data.get("map_logic")
-        #player_state    = data.get("player")
+        map_state       = data.get("map_logic")
+        player_state    = data.get("player")
         stats_state     = data.get("statistics")
         jobs_state      = data.get("job_logic")
-        #weather_state   = data.get("weather")
+        weather_state   = data.get("weather")
 
-        #if not all(isinstance(x, dict) for x in (map_state, player_state, stats_state, jobs_state, weather_state)):
-            #return False
+        if not all(isinstance(x, dict) for x in (map_state, player_state, stats_state, jobs_state, weather_state)):
+            return False
 
         ok = True
 
-        #ok &= bool(self.map.load_state(map_state))
-        #ok &= bool(self.player.load_state(player_state))
+        ok &= bool(self.map.load_map(map_state))
+        ok &= bool(self.player.load_state(player_state))
         ok &= bool(self.job_logic.load_state(jobs_state))
-        #ok &= bool(self.weather.load_state(weather_state))
+        ok &= bool(self.weather.load_state(weather_state))
         ok &= bool(self.statistics_logic.load_state(stats_state))
 
         return ok

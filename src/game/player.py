@@ -62,7 +62,7 @@ class Player:
 
         stamina_cost = 0.5
 
-        stamina_cost += self.get_stamina_extra(weight, weather)
+        stamina_cost += self.get_stamina_extra(weight, weather) / 2.5
 
         old_x, old_y = self.x, self.y
 
@@ -91,7 +91,7 @@ class Player:
 
         # Si efectivamente se movió, baja resistencia
         if (self.x, self.y) != (old_x, old_y):
-            self.stamina = max(0, self.stamina - stamina_cost)
+            self.stamina = max(0, self.stamina - (stamina_cost / 2))
             if self.stamina <= 0:
                 self.exhausted = True
 
