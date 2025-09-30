@@ -1,6 +1,6 @@
 # Global tunables
 
-TILE_SIZE = 22
+TILE_SIZE = 20
 FPS = 60
 
 SPRITES = {
