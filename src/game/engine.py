@@ -76,6 +76,14 @@ class Game:
         # 9) Game Over Logic
         self.game_over = GameOverLogic(self.hud_font, self.small_font)
 
+        #10) SoundManager para reproducir sonidos jeje
+        pygame.mixer.set_num_channels(16)  # opcional, por si hay varios SFX
+        self.sfx = SoundManager()    
+
+        #11) Pausa Logic
+        self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font, self._save_game)
+
+
     # --------- Ciclo principal ---------
     def run(self):
         running = True
