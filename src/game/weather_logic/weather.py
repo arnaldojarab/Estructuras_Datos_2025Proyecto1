@@ -54,7 +54,7 @@ class WeatherManager:
     # Internos
     # --------------------------
     def _random_burst_duration(self) -> float:
-        return random.uniform(6, 7)
+        return random.uniform(60, 90)
 
     def _choose_next_condition(self) -> str:
         probs = self.transition_matrix.get(self.current_condition, {})
@@ -77,7 +77,6 @@ class WeatherManager:
         self.to_multiplier = self.BASE_MULTIPLIERS[next_condition]
 
         self.visuals.handle_condition_change(next_condition)
-
         self.current_condition = next_condition
 
     # --------------------------

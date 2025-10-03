@@ -3,11 +3,7 @@
 TILE_SIZE = 20
 FPS = 60
 
-SPRITES = {
-    "C": "street.png",
-    "B": "building.png",
-    "P": "park.png",
-}
+
 
 # Movement & stamina
 BASE_SPEED = 3.0  # celdas/seg
@@ -42,7 +38,7 @@ GO_TITLE_FONT_SIZE = 35        # reutiliza fuente del HUD
 GO_SCORE_DECIMALS = 2
 
 # --- TIMER ---
-TIMER_START_SECONDS = 60 # 10 minutos TODO modificar por ahora 60 segundos
+TIMER_START_SECONDS = 600 # 10 minutos TODO modificar por ahora 60 segundos
 TIMER_TEXT = (240, 240, 240)
 
 # --- Tipografía ---
