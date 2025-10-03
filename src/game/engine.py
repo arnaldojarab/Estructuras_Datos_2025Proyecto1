@@ -72,7 +72,8 @@ class Game:
         self.job_logic.reset()
 
         #8) UI: Inventario
-        self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height(), cols=6)
+        ##self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height())
+        self.inventory_ui = InventoryUI()
         self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
 
         # 9) Game Over Logic
@@ -306,15 +307,10 @@ class Game:
 
 
     def _inventory_update(self, dt):
-        self.inventory_ui.update(dt)
+        #self.inventory_ui.update(dt)
         # Refresca con el inventario real (preserva selección)
         self.inventory_ui.set_jobs(self.job_logic.getInventory(), keep_selection=True)
         # Pasa stats al encabezado
-        self.inventory_ui.set_header_stats(
-            money=self.job_logic.getMoney(),
-            weight=self.job_logic.getWeight(),
-            reputation=self.job_logic.getReputation()
-    )
 
     def _inventory_draw(self):
         # Tu loop ya dibuja: fondo/mapa/jugador/estamina

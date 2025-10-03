@@ -219,15 +219,19 @@ class JobLogic:
             dist = abs(mgx - pgx) + abs(mgy - pgy)
             if dist <= self._PICKUP_RADIUS_TILES:
                 job = self.jobs.get(m.job_id)
-                # Aceptar en inventario
-                self.orders.accept_job(job.id)
-                print(f"Pedido aceptado (agregado al inventario), id: {job.id}")
-                # Crear dropoff marker con due_at relativo
-                dx, dy = job.dropoff
-                qx, qy = self._grid_center_to_px(dx, dy)
-                due_at = self._game_elapsed + self._DROPOFF_LATE_AFTER
-                self._dropoff_markers.append(DropoffMarker(qx, qy, job.id, due_at))
-                to_remove_pickups.append(idx)
+                # Aceptar en inventario}
+
+                if(self.getWeight() < 5):
+                    self.orders.accept_job(job.id)
+                    print(f"Pedido aceptado (agregado al inventario), id: {job.id}")
+                    # Crear dropoff marker con due_at relativo
+                    dx, dy = job.dropoff
+                    qx, qy = self._grid_center_to_px(dx, dy)
+                    due_at = self._game_elapsed + self._DROPOFF_LATE_AFTER
+                    self._dropoff_markers.append(DropoffMarker(qx, qy, job.id, due_at))
+                    to_remove_pickups.append(idx)
+                else:
+                    print("Peso maximo alcanzado")
 
         for i in reversed(to_remove_pickups):
             self._pickup_markers.pop(i)
