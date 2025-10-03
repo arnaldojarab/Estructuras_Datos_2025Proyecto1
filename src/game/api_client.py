@@ -12,7 +12,7 @@ API_CITY_MAP_URL = (
 )
 
 API_CITY_WEATHER_URL = (
-    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weather"
+    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weatherS"
 )
 
 API_JOBS_URL = (

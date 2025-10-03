@@ -116,18 +116,18 @@ class MainMenu:
             rect=pygame.Rect(btn_x, btn_y, btn_w, btn_h),
             text="Iniciar nueva partida",
             font=self.font,
-            bg=settings.BUTTON_BG,
-            bg_hover=settings.BTN_BG_HOVER,
-            fg=settings.TEXT_DARK,
+            bg=settings.MENU_BG,
+            bg_hover=settings.MENU_BG_HOVER,
+            fg=settings.BUTTON_BG,
         )
 
         self.btn_load = Button(
             rect=pygame.Rect(btn_x, load_y, btn_w, btn_h),
             text="Cargar partida",
             font=self.font,
-            bg=settings.BUTTON_BG,
-            bg_hover=settings.BTN_BG_HOVER,
-            fg=settings.TEXT_DARK,
+            bg=settings.MENU_BG,
+            bg_hover=settings.MENU_BG_HOVER,
+            fg=settings.BUTTON_BG,
         )
 
         if self.phase == "LOAD":
