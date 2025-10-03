@@ -2,6 +2,7 @@
 import random
 import os
 import pygame
+import math
 from .. import settings
 from .weather_Items import Cloud 
 
@@ -12,7 +13,7 @@ class WeatherVisuals:
     Recibe la condición actual desde WeatherManager.
     """
 
-    def __init__(self,window_w, window_h):
+    def __init__(self, window_w, window_h):
         self.clouds = []
         self._cloud_spawn_timer = 0.0
         self._max_clouds = 0
@@ -21,87 +22,108 @@ class WeatherVisuals:
         self.lightning_alpha = 0
         self.lightning = None
 
-        self.filter_alpha = 0       # empieza invisible
-        self.target_alpha = 90      # opacidad final del filtro
+
+        self.wind_offset = 0  # desplazamiento para animar las líneas de viento
+        self.wind_speed = 250  # px/s, velocidad de las líneas de viento
+        self.wind_gusts = []
+        self.max_wind_gusts = 25  # cuántas ráfagas simultáneas
+
+        
+
         self.filter_speed = 30      # velocidad de transición (aumenta o baja este valor)
 
-        self.window_w=window_w
-        self.window_h=window_h
+        # Cargar imágenes heat/cold
+        assets_dir = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "overlays")
+        self.heat_image = pygame.image.load(os.path.join(assets_dir, "heat.png")).convert_alpha()
+        self.cold_image = pygame.image.load(os.path.join(assets_dir, "cold.png")).convert_alpha()
+
+        # Ventana
+        self.window_w = window_w
+        self.window_h = window_h
+
+        # --- SISTEMA DE DOBLE BUFFER ---
+        self.climates = ["clear","clouds","rain_light","rain","storm","fog","wind","heat","cold"]
+        self.alphas = {c: 0 for c in self.climates}  # alpha por clima
+        self.targets = {
+            "clear": 0,
+            "clouds": 50,
+            "rain_light": 40,
+            "rain": 60,
+            "storm": 90,
+            "fog": 70,
+            "wind": 50,
+            "heat": 120,
+            "cold": 120
+        }
 
     def update(self, dt, condition: str, transitioning: bool):
         # actualizar nubes
         for cloud in self.clouds:
             cloud.update(dt)
 
-        # borrar solo nubes ya desvanecidas y sin transición
+        # borrar nubes totalmente transparentes y sin transición
         self.clouds = [c for c in self.clouds if not (c.is_fully_transparent() and not c._transitioning)]
 
         # spawn de nubes
-        if self._max_clouds > 0 and condition in ("clouds", "rain", "rain_light", "storm"):
+        if self._max_clouds > 0 and condition in ("clouds", "rain", "rain_light", "storm", "fog"):
             self._cloud_spawn_timer += dt
             if self._cloud_spawn_timer > random.uniform(0.3, 0.5):
                 if len(self.clouds) < self._max_clouds:
                     self._spawn_cloud(condition)
                 self._cloud_spawn_timer = 0
 
-    def handle_condition_change(self, next_condition):
-        if next_condition == "clear":
-            for c in self.clouds:
-                c.start_transition(0, 0, duration=5)  # fade out
-            self._max_clouds = 0
+        # --- TRANSICIÓN DOBLE BUFFER ---
+        for clima in self.climates:
+            target = self.targets.get(clima, 0)
+            if clima == condition:
+                if self.alphas[clima] < target:
+                    self.alphas[clima] += self.filter_speed * dt
+                    if self.alphas[clima] > target:
+                        self.alphas[clima] = target
+            else:
+                if self.alphas[clima] > 0:
+                    self.alphas[clima] -= self.filter_speed * dt
+                    if self.alphas[clima] < 0:
+                        self.alphas[clima] = 0
 
+    def handle_condition_change(self, next_condition):
+        if next_condition in ("clear", "wind", "cold", "heat"):
+            for c in self.clouds:
+                c.start_transition(0, 0, duration=5)
+            self._max_clouds = 0
         elif next_condition == "clouds":
             self._max_clouds += 50
             self._cloud_spawn_timer = 0
             for c in self.clouds:
-                c.start_transition(255, 0, duration=3)  # blanco
-
-        elif next_condition in ("rain", "rain_light", "storm"):
+                c.start_transition(255, 0, duration=3)
+        elif next_condition == "rain_light":
+            self._max_clouds += 50
+            self._cloud_spawn_timer = 0
+            for c in self.clouds:
+                c.start_transition(0, 150, duration=3)
+        elif next_condition in ("rain", "storm"):
             self._max_clouds += 85
             self._cloud_spawn_timer = 0
             for c in self.clouds:
-                c.start_transition(0, 255, duration=3)  # gris
+                c.start_transition(0, 255, duration=3)
+        elif next_condition == "fog":
+            self._max_clouds += 130
+            self._cloud_spawn_timer = 0
+            for c in self.clouds:
+                c.start_transition(150, 0, duration=3)
 
     def _select_Image(self):
         num= random.randint(0,4)
         assets_dir = os.path.join(os.path.dirname(__file__), "..","..", "assets", "clouds")
         nubes = []
-
-        
-        if num == 0:
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_white0.png")).convert_alpha()) 
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray0.png")).convert_alpha())
-        elif num == 1:
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_white1.png")).convert_alpha()) 
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray1.png")).convert_alpha())
-        elif num == 2:
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_white2.png")).convert_alpha()) 
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray2.png")).convert_alpha())
-        elif num == 3:
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_white3.png")).convert_alpha()) 
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray3.png")).convert_alpha())
-        elif num == 4:
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_white4.png")).convert_alpha()) 
-            nubes.append(pygame.image.load(os.path.join(assets_dir, "cloud_gray4.png")).convert_alpha())
-
+        nubes.append(pygame.image.load(os.path.join(assets_dir, f"cloud_white{num}.png")).convert_alpha())
+        nubes.append(pygame.image.load(os.path.join(assets_dir, f"cloud_gray{num}.png")).convert_alpha())
         return num, nubes  
     
     def _select_lightning_image(self):
         num= random.randint(0,4)
         assets_dir = os.path.join(os.path.dirname(__file__), "..","..", "assets", "lightning")
-
-        if num == 0:
-            return pygame.image.load(os.path.join(assets_dir, "lightning_0.png")).convert_alpha()
-        elif num == 1:
-            return pygame.image.load(os.path.join(assets_dir, "lightning_1.png")).convert_alpha()
-        elif num == 2:
-            return pygame.image.load(os.path.join(assets_dir, "lightning_2.png")).convert_alpha()
-        elif num == 3:
-            return pygame.image.load(os.path.join(assets_dir, "lightning_3.png")).convert_alpha()
-        elif num == 4:
-            return pygame.image.load(os.path.join(assets_dir, "lightning_4.png")).convert_alpha()
-        
-
+        return pygame.image.load(os.path.join(assets_dir, f"lightning_{num}.png")).convert_alpha()
 
     def _spawn_cloud(self, condition: str):
         variant_index, nubes = self._select_Image()
@@ -114,137 +136,147 @@ class WeatherVisuals:
 
         cloud = Cloud(white, gray, x, y, speed, variant_index)
 
-        if condition in ("rain", "rain_light", "storm"):
+        if condition in ("rain", "storm"):
             cloud.alpha_white = 0
             cloud.alpha_gray = 0
-            cloud.start_transition(0, 255, duration=3)  # gris
+            cloud.start_transition(0, 255, duration=3)
+        elif condition == "rain_light":
+            cloud.alpha_white = 0
+            cloud.alpha_gray = 0
+            cloud.start_transition(0, 150, duration=3)
         elif condition == "clouds":
             cloud.alpha_white = 0
             cloud.alpha_gray = 0
-            cloud.start_transition(255, 0, duration=3)  # blanco
+            cloud.start_transition(255, 0, duration=3)
+        elif condition == "fog":
+            cloud.alpha_white = 0
+            cloud.alpha_gray = 0
+            cloud.start_transition(150, 0, duration=3)
 
         self.clouds.append(cloud)
 
     def draw_overlay(self, screen: pygame.Surface, player, dt, cond: str):
-
-        # === Inicialización de alpha si no existe ===
-        if not hasattr(self, "filter_alpha"):
-            self.filter_alpha = 0
-            self.target_alpha = 0
-            self.filter_speed = 60   # velocidad del fade
-
-        # === NUBES ===
-        if cond in ("clear", "clouds", "rain", "rain_light", "storm"):
-            for cloud in self.clouds:
-                cloud.draw(screen)
-
-        # === OVERLAYS según condición ===
         w, h = screen.get_size()
         overlay = pygame.Surface((w, h), pygame.SRCALPHA)
 
-        # --- Determinar target según condición ---
-        if cond == "rain_light":
-            self.target_alpha = 40
-        elif cond == "rain":
-            self.target_alpha = 60
-        elif cond == "storm":
-            self.target_alpha = 90
-        else:
-            self.target_alpha = 0
+        # --- DIBUJAR NUBES ---
+        
+        for cloud in self.clouds:
+            cloud.draw(screen)
 
-        # --- Interpolación gradual ---
-        if self.filter_alpha < self.target_alpha:
-            self.filter_alpha += self.filter_speed * dt
-            if self.filter_alpha > self.target_alpha:
-                self.filter_alpha = self.target_alpha
-        elif self.filter_alpha > self.target_alpha:
-            self.filter_alpha -= self.filter_speed * dt
-            if self.filter_alpha < self.target_alpha:
-                self.filter_alpha = self.target_alpha
+        # --- DIBUJAR LLUVIA ---
+        if self.alphas["rain_light"] > 0 or self.alphas["rain"] > 0:
+            total_alpha = int(max(self.alphas["rain_light"], self.alphas["rain"]) / 90 * 140)
+            count = 60 if cond=="rain_light" else 120
+            for _ in range(count):
+                x1 = random.randrange(0, w)
+                y1 = random.randrange(0, h)
+                length = 9 if cond=="rain_light" else 10
+                pygame.draw.line(overlay, (180,180,220,total_alpha), (x1,y1), (x1+2, y1+length),1)
 
-        # --- Dibujar condiciones ---
-        if cond in ("rain_light", "rain"):
-            self.rain_timer += dt
-            if self.rain_timer > 0:
-                count = 60 if cond == "rain_light" else 120
-                for _ in range(count):
-                    x1 = random.randrange(0, w)
-                    y1 = random.randrange(0, h)
-                    length = 6 if cond == "rain_light" else 10
-                    alpha = int(140 * (self.filter_alpha / 90))  
-                    pygame.draw.line(
-                        overlay,
-                        (180, 180, 220, alpha),
-                        (x1, y1),
-                        (x1 + 2, y1 + length),
-                        1
-                    )
-
-        elif cond == "storm":
+        # --- DIBUJAR STORM ---
+        if self.alphas["storm"] > 0:
             for _ in range(180):
                 x1 = random.randrange(0, w)
                 y1 = random.randrange(0, h)
-                pygame.draw.line(
-                    overlay,
-                    (160, 160, 220, 180),
-                    (x1, y1),
-                    (x1 + 3, y1 + 12),
-                    2,
-                )
+                pygame.draw.line(overlay, (160,160,220,180), (x1,y1), (x1+3,y1+12),2)
 
-            
             if random.random() < 0.009:
-                flash = pygame.Surface((w, h))
-                flash.fill((255, 255, 255))
-                screen.blit(flash, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
-                
-                # activar relámpago
+                flash = pygame.Surface((w,h))
+                flash.fill((255,255,255))
+                screen.blit(flash,(0,0),special_flags=pygame.BLEND_RGB_ADD)
                 self.lightning_alpha = 255
                 self.lightning = self._select_lightning_image()
 
             if self.lightning_alpha > 0 and self.lightning is not None:
-                
                 self.lightning.set_alpha(self.lightning_alpha)
-
-                # posición del relámpago (ej: centrado arriba)
-                lx = w // 2 - self.lightning.get_width() // 2
-                ly = 50  
-                screen.blit(self.lightning, (0,0))
-
-                # reducir alpha gradualmente (velocidad = 300 px/s aprox)
-                self.lightning_alpha -= 900 * dt
+                lx = w//2 - self.lightning.get_width()//2
+                ly = 50
+                screen.blit(self.lightning,(0,0))
+                self.lightning_alpha -= 900*dt
                 if self.lightning_alpha < 0:
                     self.lightning_alpha = 0
 
-        elif cond == "heat":
-            overlay.fill((255, 200, 120, 60))
+        # --- IMAGENES HEAT / COLD ---
+        if self.alphas["heat"] > 0:
+            img = pygame.transform.scale(self.heat_image,(w,h))
+            img.set_alpha(int(self.alphas["heat"]))
+            screen.blit(img,(0,0))
 
-        elif cond == "fog":
-            overlay.fill((220, 220, 220, 200))
+        if self.alphas["cold"] > 0:
+            img = pygame.transform.scale(self.cold_image,(w,h))
+            img.set_alpha(int(self.alphas["cold"]))
+            screen.blit(img,(0,0))
+
+        # --- FOG ---
+        if self.alphas["fog"] > 0:
+            overlay.fill((220,220,220,int(self.alphas["fog"])))
             px, py = int(player.x), int(player.y)
-            radius = max(60, int(3 * settings.TILE_SIZE))
-            pygame.draw.circle(overlay, (0, 0, 0, 0), (px, py), radius)
+            radius = max(60, int(3*settings.TILE_SIZE))
+            pygame.draw.circle(overlay, (0,0,0,0), (px, py), radius)
 
-        elif cond == "wind":
-            overlay.fill((90, 120, 160, 40))
-        
-        elif cond == "cold":
-            overlay.fill((21, 188, 234, 50))
+        # --- WIND ---
+        if self.alphas["wind"] > 0:
+            # inicializar ráfagas si no existen
+            if len(self.wind_gusts) < self.max_wind_gusts:
+                for _ in range(self.max_wind_gusts):
+                    x = random.randint(-self.window_w, self.window_w)
+                    y = random.randint(0, self.window_h)
+                    speed = random.uniform(100, 300)   # velocidad horizontal
+                    length = random.randint(40, 100)   # largo de la línea
+                    thickness = random.randint(1, 3)   # grosor
+                    phase = random.uniform(0, math.pi * 2)   # fase inicial
+                    freq = random.uniform(1, 3)               # frecuencia de oscilación
+                    amp = random.uniform(2, 6)                # amplitud (qué tanto se mueve)
+                    self.wind_gusts.append([x, y, speed, length, thickness, phase, freq, amp])
 
-        # --- Filtro azul gradual aplicado en cualquier caso ---
-        if self.filter_alpha > 0:
-            blue_filter = pygame.Surface((w, h), pygame.SRCALPHA)
-            # usar SIEMPRE self.filter_alpha, nunca fijo
-            blue_filter.fill((20, 40, 100, int(self.filter_alpha)))
-            screen.blit(blue_filter, (0, 0))
+            # actualizar y dibujar ráfagas
+            new_gusts = []
+            for gust in self.wind_gusts:
+                x, y, speed, length, thickness, phase, freq, amp = gust
+                # movimiento base
+                x += speed * dt
+                # oscilación sinusoidal en Y
+                y_offset = math.sin(phase + freq * pygame.time.get_ticks() * 0.001) * amp
 
-        screen.blit(overlay, (0, 0))
+                color = (150, 180, 220, int(self.alphas["wind"]))
+                pygame.draw.line(
+                    overlay,
+                    color,
+                    (x, y + y_offset),
+                    (x + length, y + y_offset),
+                    thickness,
+                )
 
+                # conservar ráfaga si sigue en pantalla, si no reciclarla
+                if x < self.window_w:
+                    new_gusts.append([x, y, speed, length, thickness, phase, freq, amp])
+                else:
+                    new_gusts.append([
+                        -random.randint(50, 200),
+                        random.randint(0, self.window_h),
+                        random.uniform(100, 300),
+                        random.randint(40, 100),
+                        random.randint(1, 3),
+                        random.uniform(0, math.pi * 2),
+                        random.uniform(1, 3),
+                        random.uniform(2, 6),
+                    ])
+
+            self.wind_gusts = new_gusts
+
+
+        # --- FILTRO AZUL SOLO PARA LLUVIA/STORM ---
+        if self.alphas["rain_light"] > 0 or self.alphas["rain"] > 0 or self.alphas["storm"] > 0:
+            blue_alpha = max(self.alphas["rain_light"],self.alphas["rain"],self.alphas["storm"])
+            blue_filter = pygame.Surface((w,h),pygame.SRCALPHA)
+            blue_filter.fill((20,40,100,int(blue_alpha)))
+            screen.blit(blue_filter,(0,0))
+
+        screen.blit(overlay,(0,0))
+
+    # --- SERIALIZACIÓN DE NUBES ---
     def save_state(self) -> list:
-        """
-        Devuelve una lista de dicts representando todas las nubes.
-        Puede ser serializada con pickle .
-        """
         return [c.to_dict() for c in self.clouds]
 
     def load_state(self, clouds_data: list):
@@ -256,7 +288,7 @@ class WeatherVisuals:
             gray = nubes[1]
             cloud = Cloud.from_dict(cdata, white, gray)
             self.clouds.append(cloud)
-            
+
     def _select_Image_by_index(self, num):
         assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "clouds")
         nubes = []

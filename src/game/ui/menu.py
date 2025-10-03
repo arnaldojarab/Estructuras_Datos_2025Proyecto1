@@ -9,6 +9,16 @@ class MainMenu:
         self.w, self.h = screen_size
         self.font = pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self.on_load = on_load
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        bg_path = os.path.normpath(os.path.join(base_dir, "..", "..", "assets", "images", "menu_bg.png"))
+        self.bg_surf = pygame.image.load(bg_path).convert()  
+        self.bg_surf = pygame.transform.smoothscale(self.bg_surf, (self.w, self.h))
+        
+
+        #Mover botones e imagen
+        self.offset_x = -150 
+
         
         # phases: MAIN (botones principales) | LOAD (lista de partidas)
         self.phase = "MAIN"
@@ -62,13 +72,15 @@ class MainMenu:
         self.w, self.h = screen_size
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
 
+        
+
         # MAIN buttons (centrados)
         btn_w, btn_h = 248, 54
         gap_y = 16                   # separación entre botones
         icon_gap = 48                # separación entre icono y primer botón
 
         # --- cálculo del ancho y x centrado ---
-        btn_x = self.w // 2 - btn_w // 2
+        btn_x = self.w // 2 - btn_w // 2 + self.offset_x
 
         # --- medir el alto del bloque (icono + gap + botón + gap + botón) ---
         has_icon = self.icon_surf is not None
@@ -86,7 +98,7 @@ class MainMenu:
         # --- posiciones verticales ---
         if has_icon:
             # icono centrado horizontalmente en y0
-            ix = self.w // 2 - self.icon_surf.get_width() // 2
+            ix = self.w // 2 - self.icon_surf.get_width() // 2 + self.offset_x
             iy = y0
             self.icon_rect = pygame.Rect(ix, iy, self.icon_surf.get_width(), self.icon_surf.get_height())
             # primer botón debajo del icono
@@ -129,9 +141,11 @@ class MainMenu:
         current_size = surface.get_size()
         if current_size != (self.w, self.h):
             self._layout(current_size)
+            self.bg_surf = pygame.transform.scale(self.bg_surf, current_size)
+          
 
         # Fondo
-        pygame.draw.rect(surface, settings.MENU_BG, self.panel_rect)
+        surface.blit(self.bg_surf, (0, 0)) 
         
         if self.phase == "MAIN":
             # Icon (circular), if loaded
@@ -148,12 +162,12 @@ class MainMenu:
     def _draw_load(self, surface: pygame.Surface):
         # Título
         title_surf = self.font.render(self.load_title, True, settings.BUTTON_BG)
-        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, int(self.h * 0.18)))
+        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2+ self.offset_x, int(self.h * 0.18)))
 
         # Feedback si no hay saves
         if self.load_feedback:
             fb = self.font.render(self.load_feedback, True, settings.TEXT_RED)
-            surface.blit(fb, (self.w // 2 - fb.get_width() // 2, self.h // 2 - fb.get_height() // 2))
+            surface.blit(fb, (self.w // 2 - fb.get_width() // 2 + self.offset_x, self.h // 2 - fb.get_height() // 2))
         else:
           # Botones por archivo
           for b in self.save_buttons:
@@ -163,7 +177,7 @@ class MainMenu:
         # Hint simple
         hint = "ESC para volver"
         hint_surf = pygame.font.Font(settings.UI_FONT_NAME, 18).render(hint, True, settings.BUTTON_BG)
-        surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2, int(self.h * 0.88)))
+        surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2 + self.offset_x, int(self.h * 0.88)))
 
     def handle_event(self, event) -> str | None:
         if self.phase == "MAIN":
@@ -226,7 +240,7 @@ class MainMenu:
         btn_w, btn_h = 320, 48
         total_h = len(entries) * btn_h + max(0, (len(entries) - 1)) * 10
         y0 = self.h // 2 - total_h // 2
-        x = self.w // 2 - btn_w // 2
+        x = self.w // 2 - btn_w // 2 + self.offset_x
 
         for idx, fname in enumerate(entries):
             y = y0 + idx * (btn_h + 10)
