@@ -202,6 +202,8 @@ class JobLogic:
                 self.orders.record_offer_result(m.job_id, accepted=False)
                 print(f"Pedido expirado (agregado al historial como rechazado), id: {m.job_id}")
                 self.reputation -= 5  # penalización por no aceptar
+                if self.reputation < 0:
+                    self.reputation = 0
                 to_remove.append(idx)
         for i in reversed(to_remove):
             self._pickup_markers.pop(i)
@@ -256,6 +258,8 @@ class JobLogic:
                     self.reputation = 100
             else:
                 self.reputation -= 10   # penalización por entrega tarde
+                if self.reputation < 0:
+                    self.reputation = 0
             to_remove_dropoffs.append(idx)
 
         for i in reversed(to_remove_dropoffs):

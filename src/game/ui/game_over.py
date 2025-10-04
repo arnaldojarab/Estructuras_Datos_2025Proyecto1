@@ -49,6 +49,8 @@ class GameOverLogic:
         self.hud_font = hud_font
         self.small_font = small_font
         self.title_font = pygame.font.Font(settings.UI_FONT_NAME, settings.MENU_TITLE_FONT_SIZE)
+        self.title = "GAME OVER"
+        self.win = False
 
 
         # Runtime state
@@ -111,7 +113,12 @@ class GameOverLogic:
         pygame.draw.rect(screen, settings.MENU_BG, pygame.Rect(0, 0, W, H))
 
         # Title
-        title_surf = self.title_font.render("GAME OVER", True, settings.GO_TEXT_COLOR)
+
+        if self.win:
+            title_surf = self.title_font.render(self.title, True, settings.TEXT_GREEN)
+        else:
+          title_surf = self.title_font.render(self.title, True, settings.TEXT_RED)
+
         screen.blit(title_surf, (W // 2 - title_surf.get_width() // 2, int(H * GO_TITLE_Y_RATIO)))
 
         # Phase-specific rendering
@@ -158,6 +165,10 @@ class GameOverLogic:
     def _handle_table_keydown(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_RETURN:
             self._done = True
+
+    def set_title(self, title: str, win: bool):
+        self.title = title
+        self.win = win
 
     # -------- Data prep --------
 

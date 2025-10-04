@@ -42,3 +42,7 @@ TIMER_TEXT = (240, 240, 240)
 
 # --- Tipografía ---
 STATS_FONT_SIZE = 20
+
+# --- Condicion Victoria y derrrota ---
+META_INGRESOS = 9000.0
+MIN_REPUTACION = 20

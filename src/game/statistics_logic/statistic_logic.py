@@ -26,15 +26,15 @@ class statisticLogic:
         self._font = font or pygame.font.Font(settings.UI_FONT_NAME, settings.UI_FONT_SIZE)
         self._font_stats = pygame.font.Font(settings.UI_FONT_NAME, settings.STATS_FONT_SIZE)
 
-
         # Posicionamiento del temporizador (p. ej. centrado arriba)
         self._align_x: AlignX = align_x
         self._align_y: AlignY = align_y
         self._margin_x = margin_x
         self._margin_y = margin_y
 
-        self._money: float = 0.0        # dinero inicial
-        self._reputation: int = 70      # reputación inicial (int)
+        self._money: float = 0.0
+        self._reputation: int = 70
+        self._meta_ingresos: float = float(settings.META_INGRESOS)
 
     # ---------------- API pública mínima ----------------
     def reset(self) -> None:
@@ -78,7 +78,7 @@ class statisticLogic:
         self._money = amount
     
     def _draw_money(self, surface: pygame.Surface) -> None:
-        label = f'dinero: ${self._money:,.2f}'
+        label = f'dinero: ${self._money:,.0f} / ${self._meta_ingresos:,.0f}'
         fg = (16, 110, 16)
         pos = (10, 10) # margen sup-izq
         self._draw_text_with_outline(surface, label, fg, pos)
@@ -154,7 +154,6 @@ class statisticLogic:
         if hasattr(self, "_finished"):
             self._finished = (s <= 0.0)
 
-
     # ---------------- Extras públicos útiles ----------------
     def finished(self) -> bool:
         return self._timer.finished()
@@ -179,7 +178,6 @@ class statisticLogic:
                 "reputation": int(self._reputation),
             },
         }
-
 
     def load_state(self, state: dict) -> bool:
         """

@@ -238,11 +238,17 @@ class Game:
 
 
         # 3) Actualiza Estadísticas
-        self.statistics_logic.update(dt, self.job_logic.getMoney(), self.job_logic.getReputation())
-        if self.statistics_logic.check_time_finished():
+        currentMoney = self.job_logic.getMoney()
+        currentReputation = self.job_logic.getReputation()
+        self.statistics_logic.update(dt, currentMoney, currentReputation)
+        if self.statistics_logic.check_time_finished() or currentReputation < settings.MIN_REPUTACION:
+            self.game_over.set_title("GAME OVER (you lose)", win=False)
             self.game_over.enter(self.get_score())
             self.state = GameState.GAME_OVER
-        
+        if currentMoney >= settings.META_INGRESOS:
+            self.game_over.set_title("CONGRATS! (you win)", win=True)
+            self.game_over.enter(self.get_score())
+            self.state = GameState.GAME_OVER
         # 4) Actualiza pedidos
         self.job_logic.update(dt, self.player.x, self.player.y)
 
