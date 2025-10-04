@@ -12,7 +12,7 @@ API_CITY_MAP_URL = (
 )
 
 API_CITY_WEATHER_URL = (
-    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weatherS"
+    "https://tigerds-api.kindflower-ccaf48b6.eastus.azurecontainerapps.io/city/weather"
 )
 
 API_JOBS_URL = (
@@ -44,23 +44,6 @@ class APIClient:
             return json.load(f)
 
     def get_map(self) -> dict:
-        """
-        Devuelve el mapa como dict. Primero intenta API; si falla, usa data/ciudad.json
-        Estructura esperada (nuevo formato):
-        {
-          "version": "...",
-          "data": {
-            "version": "...",
-            "city_name": "...",
-            "width": int,
-            "height": int,
-            "goal": float,
-            "max_time": int,
-            "tiles": [[str, ...], ...],
-            "legend": { "C": {...}, "B": {...}, "P": {...} }
-          }
-        }
-        """
         try:
             data = self._fetch_json(API_CITY_MAP_URL)
 
@@ -161,8 +144,6 @@ class APIClient:
             return self._load_local("weather")
 
 
-
-        #return self._load_local("weather")
     
     def get_map_local(self) -> dict:
         return self._load_local("ciudad")
