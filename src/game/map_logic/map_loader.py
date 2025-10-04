@@ -1,10 +1,9 @@
-# map_loader.py
+
 import json
 import os
-import pygame
 from .. import settings
 from ..api_client import APIClient
-from .tileRenderer import TileRenderer   # clase que definimos abajo
+from .tileRenderer import TileRenderer   
 
 
 class MapLoader:
@@ -19,7 +18,6 @@ class MapLoader:
     def load_default(self):
         """
         Intenta API y, si falla, lee /data/ciudad.json
-        Devuelve self para encadenar: MapLoader().load_default()
         """
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..","..", ".."))
         api = APIClient(base_dir)

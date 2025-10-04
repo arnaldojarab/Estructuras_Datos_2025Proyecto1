@@ -14,11 +14,7 @@ class TileRenderer:
         self.assets_dir = os.path.join(os.path.dirname(__file__),"..", "..", "assets", "tiles")
 
     def get_surface(self, sym, variant, tiles, x=None, y=None):
-        """
-        Devuelve la superficie de un tile. Si variant es None, se elige automáticamente.
-        """
-        ##if variant is None:
-        ##    variant = self.choose_variant(sym, tiles, x, y)
+              
 
         key = (sym, variant)
         if key not in self.cache:

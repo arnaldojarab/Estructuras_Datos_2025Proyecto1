@@ -6,8 +6,7 @@ from .weather_visuals import WeatherVisuals
 
 class WeatherManager:
     """
-    Lógica del clima: ráfagas, condiciones actuales y transiciones Markovianas.
-    (Sin dependencias gráficas ni de pygame)
+    Lógica del clima: ráfagas, condiciones actuales y transiciones.
     """
 
     BASE_MULTIPLIERS = {
@@ -54,7 +53,7 @@ class WeatherManager:
     # Internos
     # --------------------------
     def _random_burst_duration(self) -> float:
-        return random.uniform(12, 13)
+        return random.uniform(60, 90)
 
     def _choose_next_condition(self) -> str:
         probs = self.transition_matrix.get(self.current_condition, {})

@@ -162,12 +162,12 @@ class MainMenu:
     def _draw_load(self, surface: pygame.Surface):
         # Título
         title_surf = self.font.render(self.load_title, True, settings.BUTTON_BG)
-        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2+ self.offset_x, int(self.h * 0.18)))
+        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, int(self.h * 0.18)))
 
         # Feedback si no hay saves
         if self.load_feedback:
             fb = self.font.render(self.load_feedback, True, settings.TEXT_RED)
-            surface.blit(fb, (self.w // 2 - fb.get_width() // 2 + self.offset_x, self.h // 2 - fb.get_height() // 2))
+            surface.blit(fb, (self.w // 2 - fb.get_width() // 2 , self.h // 2 - fb.get_height() // 2))
         else:
           # Botones por archivo
           for b in self.save_buttons:
@@ -177,7 +177,7 @@ class MainMenu:
         # Hint simple
         hint = "ESC para volver"
         hint_surf = pygame.font.Font(settings.UI_FONT_NAME, 18).render(hint, True, settings.BUTTON_BG)
-        surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2 + self.offset_x, int(self.h * 0.88)))
+        surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2 , int(self.h * 0.88)))
 
     def handle_event(self, event) -> str | None:
         if self.phase == "MAIN":
@@ -240,7 +240,7 @@ class MainMenu:
         btn_w, btn_h = 320, 48
         total_h = len(entries) * btn_h + max(0, (len(entries) - 1)) * 10
         y0 = self.h // 2 - total_h // 2
-        x = self.w // 2 - btn_w // 2 + self.offset_x
+        x = self.w // 2 - btn_w // 2 
 
         for idx, fname in enumerate(entries):
             y = y0 + idx * (btn_h + 10)

@@ -1,4 +1,3 @@
-# src/game/weather_visuals.py
 import random
 import os
 import pygame
@@ -30,7 +29,7 @@ class WeatherVisuals:
 
         
 
-        self.filter_speed = 30      # velocidad de transición (aumenta o baja este valor)
+        self.filter_speed = 50     # velocidad de transición 
 
         # Cargar imágenes heat/cold
         assets_dir = os.path.join(os.path.dirname(__file__), "..", "..", "assets", "overlays")
@@ -41,9 +40,9 @@ class WeatherVisuals:
         self.window_w = window_w
         self.window_h = window_h
 
-        # --- SISTEMA DE DOBLE BUFFER ---
+        # alpha por clima
         self.climates = ["clear","clouds","rain_light","rain","storm","fog","wind","heat","cold"]
-        self.alphas = {c: 0 for c in self.climates}  # alpha por clima
+        self.alphas = {c: 0 for c in self.climates}  
         self.targets = {
             "clear": 0,
             "clouds": 50,
@@ -72,7 +71,7 @@ class WeatherVisuals:
                     self._spawn_cloud(condition)
                 self._cloud_spawn_timer = 0
 
-        # --- TRANSICIÓN DOBLE BUFFER ---
+        
         for clima in self.climates:
             target = self.targets.get(clima, 0)
             if clima == condition:
@@ -213,11 +212,10 @@ class WeatherVisuals:
             overlay.fill((220,220,220,int(self.alphas["fog"])))
             px, py = int(player.x), int(player.y)
             radius = max(60, int(3*settings.TILE_SIZE))
-            pygame.draw.circle(overlay, (0,0,0,0), (px, py), radius)
+            pygame.draw.circle(overlay, (220,220,220,30), (px, py), radius)
 
         # --- WIND ---
         if self.alphas["wind"] > 0:
-            # inicializar ráfagas si no existen
             if len(self.wind_gusts) < self.max_wind_gusts:
                 for _ in range(self.max_wind_gusts):
                     x = random.randint(-self.window_w, self.window_w)
@@ -236,7 +234,7 @@ class WeatherVisuals:
                 x, y, speed, length, thickness, phase, freq, amp = gust
                 # movimiento base
                 x += speed * dt
-                # oscilación sinusoidal en Y
+                # oscilación en Y
                 y_offset = math.sin(phase + freq * pygame.time.get_ticks() * 0.001) * amp
 
                 color = (150, 180, 220, int(self.alphas["wind"]))
