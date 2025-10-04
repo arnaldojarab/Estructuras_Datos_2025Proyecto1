@@ -1,9 +1,6 @@
 # Global tunables
-
 TILE_SIZE = 20
 FPS = 60
-
-
 
 # Movement & stamina
 BASE_SPEED = 3.0  # celdas/seg
@@ -15,10 +12,11 @@ STAMINA_RECOVERY_IDLE = 5.0  # por segundo
 MENU_TITLE_FONT_SIZE = 40
 MENU_PANEL_WIDTH = 320
 MENU_BG = (20, 20, 24)         # fondo general (opcional)
-MENU_BG_HOVER = (25,25,45)
+MENU_BG_HOVER = (53, 53, 64)
 BUTTON_BG = (200, 200, 200)
 BUTTON_BG_SELECTED = (255, 220, 120)
 BTN_BG_HOVER = (233, 233, 233)
+TEXT_LIGHT = (219, 219, 219)
 TEXT_DARK = (10, 10, 10)
 TEXT_RED = (214, 0, 0)
 TEXT_GREEN = (0, 214, 93)
@@ -39,7 +37,7 @@ GO_TITLE_FONT_SIZE = 35        # reutiliza fuente del HUD
 GO_SCORE_DECIMALS = 2
 
 # --- TIMER ---
-TIMER_START_SECONDS = 600 # 10 minutos TODO modificar por ahora 60 segundos
+TIMER_START_SECONDS = 60 #*10 # 10 minutos TODO modificar por ahora 60 segundos
 TIMER_TEXT = (240, 240, 240)
 
 # --- Tipografía ---

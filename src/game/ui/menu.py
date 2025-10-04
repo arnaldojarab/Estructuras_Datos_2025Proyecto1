@@ -14,12 +14,10 @@ class MainMenu:
         bg_path = os.path.normpath(os.path.join(base_dir, "..", "..", "assets", "images", "menu_bg.png"))
         self.bg_surf = pygame.image.load(bg_path).convert()  
         self.bg_surf = pygame.transform.smoothscale(self.bg_surf, (self.w, self.h))
-        
 
         #Mover botones e imagen
         self.offset_x = -150 
 
-        
         # phases: MAIN (botones principales) | LOAD (lista de partidas)
         self.phase = "MAIN"
 
@@ -72,8 +70,6 @@ class MainMenu:
         self.w, self.h = screen_size
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
 
-        
-
         # MAIN buttons (centrados)
         btn_w, btn_h = 248, 54
         gap_y = 16                   # separación entre botones
@@ -118,7 +114,7 @@ class MainMenu:
             font=self.font,
             bg=settings.MENU_BG,
             bg_hover=settings.MENU_BG_HOVER,
-            fg=settings.BUTTON_BG,
+            fg=settings.TEXT_LIGHT,
         )
 
         self.btn_load = Button(
@@ -127,7 +123,7 @@ class MainMenu:
             font=self.font,
             bg=settings.MENU_BG,
             bg_hover=settings.MENU_BG_HOVER,
-            fg=settings.BUTTON_BG,
+            fg=settings.TEXT_LIGHT,
         )
 
         if self.phase == "LOAD":
@@ -142,7 +138,6 @@ class MainMenu:
         if current_size != (self.w, self.h):
             self._layout(current_size)
             self.bg_surf = pygame.transform.scale(self.bg_surf, current_size)
-          
 
         # Fondo
         surface.blit(self.bg_surf, (0, 0)) 
@@ -161,13 +156,32 @@ class MainMenu:
 
     def _draw_load(self, surface: pygame.Surface):
         # Título
-        title_surf = self.font.render(self.load_title, True, settings.BUTTON_BG)
-        surface.blit(title_surf, (self.w // 2 - title_surf.get_width() // 2, int(self.h * 0.18)))
+        # Título con contorno por letra
+        title = self.load_title  # o el string que corresponda
+        title_surf = self.font.render(title, True, settings.TEXT_LIGHT)
+        title_x = self.w // 2 - title_surf.get_width() // 2
+        title_y = int(self.h * 0.18)
+
+        draw_text_outline(
+            surface,
+            title,
+            self.font,
+            (title_x, title_y),
+            color_fg=settings.TEXT_LIGHT,       # color de las letras
+            color_outline=settings.MENU_BG,     # color del contorno
+            outline_width=2                      # grosor del contorno (ajústalo)
+        )
+
 
         # Feedback si no hay saves
         if self.load_feedback:
             fb = self.font.render(self.load_feedback, True, settings.TEXT_RED)
-            surface.blit(fb, (self.w // 2 - fb.get_width() // 2 , self.h // 2 - fb.get_height() // 2))
+            fb_x = self.w // 2 - fb.get_width() // 2
+            fb_y = self.h // 2 - fb.get_height() // 2
+            fb_rect = fb.get_rect(topleft=(fb_x, fb_y)).inflate(16, 10)  # padding
+            pygame.draw.rect(surface, settings.MENU_BG, fb_rect, border_radius=6)
+            surface.blit(fb, (fb_x, fb_y))
+
         else:
           # Botones por archivo
           for b in self.save_buttons:
@@ -249,9 +263,9 @@ class MainMenu:
                     rect=pygame.Rect(x, y, btn_w, btn_h),
                     text=fname,  # muestra el nombre con .sav
                     font=self.font,
-                    bg=settings.BUTTON_BG,
-                    bg_hover=settings.BTN_BG_HOVER,
-                    fg=settings.TEXT_DARK
+                    bg=settings.MENU_BG,
+                    bg_hover=settings.MENU_BG_HOVER,
+                    fg=settings.TEXT_LIGHT
                 )
             )
 
@@ -259,3 +273,25 @@ class MainMenu:
         if not self.save_buttons:
             self.load_feedback = "No se encontraron partidas guardadas."
 
+# --- helper: outlined text ---
+def draw_text_outline(surface, text, font, pos, color_fg, color_outline, outline_width=2):
+    """Dibuja texto con contorno 'stroke' usando múltiples blits alrededor."""
+    x, y = pos
+    base = font.render(text, True, color_fg)
+    # Render auxiliar en color de contorno
+    outline_surf = font.render(text, True, color_outline)
+
+    # Offsets alrededor (8 direcciones + diagonales). Puedes añadir más para un borde más redondo.
+    offsets = []
+    r = outline_width
+    for dx in (-r, 0, r):
+        for dy in (-r, 0, r):
+            if dx == 0 and dy == 0:
+                continue
+            offsets.append((dx, dy))
+
+    for dx, dy in offsets:
+        surface.blit(outline_surf, (x + dx, y + dy))
+
+    # Texto principal encima
+    surface.blit(base, (x, y))
