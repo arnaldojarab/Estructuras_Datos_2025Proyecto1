@@ -38,3 +38,6 @@ La lógica de los pedidos se divide en 3 archivos:
 - **_base_ids_sorted**: **Lista** (copia) de todos los ids de los jobs; es útil para realizar varias acciones, pero principalmente para poder rellenar la cola `release_queue` cuando esta se queda sin pedidos.  
 - **history**: **Lista** de todos los trabajos que se han lanzado; guarda información relevante en cada entrada, como el id del job, si se aceptó o no, y si se entregó a tiempo.  
 - **inventory**: **Lista** de ids de los jobs que el jugador sí aceptó y debe entregar. Cuando se entregan, salen del inventario y se registran en el historial. Con la tecla **E** se puede entrar a una interfaz gráfica donde es posible ver y modificar el orden del inventario.
+
+### Estructura de datos usada en player.py:
+La estructura de datos usada para player fue una pila implementada mediante deque, esta cola se uso para almacenar las posiciones del jugador para poder hacer un deshacer o “undo( )” más adelante. Se uso una pila porque se requería devolver las últimas posiciones en las que estuvo y luego las primeras hasta llegar a la primera posición. 
