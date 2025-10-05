@@ -42,25 +42,25 @@ La lógica de los pedidos se divide en 3 archivos:
 ### Estructura de datos usada en player.py:
 La estructura de datos usada para player fue una pila implementada mediante deque, esta cola se uso para almacenar las posiciones del jugador para poder hacer un deshacer o “undo( )” más adelante. Se uso una pila porque se requería devolver las últimas posiciones en las que estuvo y luego las primeras hasta llegar a la primera posición. 
 
-##Mapa
+## Mapa
 
 La lógica del mapa se divide en dos partes: MapLoader, que se encarga de la información del mapa y sus características, y TileRenderer, cuya función es darle un aspecto agradable al mapa.
 
-###Estructuras de datos usadas en TileRenderer:
+### Estructuras de datos usadas en TileRenderer:
 
-cache: Es un diccionario que se utiliza como caché con imágenes cargadas según el símbolo y la variante de la imagen. La clave en este diccionario es una tupla que contiene el símbolo y la variante específica para cada tile.
+- **cache**: Es un diccionario que se utiliza como caché con imágenes cargadas según el símbolo y la variante de la imagen. La clave en este diccionario es una tupla que contiene el símbolo y la variante específica para cada tile.
 El acceso a la imagen es O(1) y no se necesitan operaciones de modificación o eliminación.
 
-###Estructuras de datos usadas en MapLoader:
+### Estructuras de datos usadas en MapLoader:
 
-tiles: Es una lista anidada que almacena, para cada posición del mapa, el símbolo y la variante de imagen correspondiente, por lo que tiles[y][x] = [símbolo, variante].
+- **tiles**: Es una lista anidada que almacena, para cada posición del mapa, el símbolo y la variante de imagen correspondiente, por lo que `tiles[y][x] = [símbolo, variante]`.
 El acceso directo a tiles por coordenadas tiene una complejidad algorítmica de O(1).
 No se necesita modificar nada después de cargar el mapa.
 
-##Clima
+## Clima
 
 La lógica del clima se divide en tres clases: WeatherManager, que maneja la lógica del cambio de climas y la duración de cada uno; WeatherVisuals, encargado de mostrar los efectos visuales de cada clima; y Cloud, que es usado por WeatherVisuals para dar dinamismo a ciertos climas.
 
-###Estructuras de datos usadas en WeatherVisuals:
-clouds: Es una lista que almacena los objetos Cloud que están activos.
-wind_gusts: Es una lista que almacena datos sobre los efectos de las ráfagas de viento; cada ráfaga es otra lista de atributos: [x, y, speed, length, thickness, phase, freq, amp].
+### Estructuras de datos usadas en WeatherVisuals:
+- **clouds**: Es una lista que almacena los objetos Cloud que están activos.
+**wind_gusts**: Es una lista que almacena datos sobre los efectos de las ráfagas de viento; cada ráfaga es otra lista de atributos: `[x, y, speed, length, thickness, phase, freq, amp]`.
