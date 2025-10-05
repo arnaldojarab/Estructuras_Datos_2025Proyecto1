@@ -226,6 +226,9 @@ class MainMenu:
             return None
 
         return None
+    
+    def reset_menu(self):
+        self.phase = "MAIN"
 
     def on_load_game(self):
         """Placeholder for Load Game action (no-op for now)."""
