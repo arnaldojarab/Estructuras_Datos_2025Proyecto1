@@ -170,6 +170,8 @@ class Game:
     def _handle_event_paused(self, event: pygame.event.Event):
         action = self.pause_menu.handle_event(event)
         if action == "exit":
+            self._reset_run()
+            self.menu.reset_menu()
             self.state = GameState.MENU
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.PLAYING
@@ -260,6 +262,8 @@ class Game:
     def _update_gameover(self, dt: float):
         self.game_over.update(dt)
         if self.game_over.is_done():
+            self._reset_run()
+            self.menu.reset_menu()
             self.state = GameState.MENU
 
     def _draw_gameover(self):

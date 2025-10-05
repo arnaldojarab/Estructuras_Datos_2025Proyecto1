@@ -57,7 +57,7 @@ class statisticLogic:
 
     # ---------------- Métodos privados (segmentados) ----------------
     def _reset_timer(self) -> None:
-        self._timer.reset()
+        self._timer = CountdownTimer(settings.TIMER_START_SECONDS)
 
     def _update_timer(self, dt: float) -> None:
         self._timer.tick(dt)
