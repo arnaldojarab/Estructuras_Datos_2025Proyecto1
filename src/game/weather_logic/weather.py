@@ -79,7 +79,7 @@ class WeatherManager:
         self.current_condition = next_condition
 
     # --------------------------
-    # API pública
+    # Pública
     # --------------------------
     def update(self, dt: float):
         # Avanzar tiempo de ráfaga
@@ -120,9 +120,7 @@ class WeatherManager:
         self.visuals.draw_overlay(screen, player, dt, self.current_condition)
 
     def reset(self, window_w=None, window_h=None):
-        """
-        Reinicia el WeatherManager y su parte visual.
-        """
+       
         window_w = window_w or self.visuals.window_w
         window_h = window_h or self.visuals.window_h
 

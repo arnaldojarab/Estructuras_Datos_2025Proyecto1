@@ -72,9 +72,17 @@ class Game:
         self.job_logic.reset()
 
         #8) UI: Inventario
-        ##self.inventory_ui = InventoryUI(self.screen.get_width(), self.screen.get_height())
-        self.inventory_ui = InventoryUI()
-        self.inventory_ui.set_jobs([])  # arranca vacío; se refresca en _inventory_update
+        self.inventory_ui = InventoryUI(self.job_logic)  # inyectamos la fuente de datos
+
+        # ENTER: fija current en JobLogic
+        self.inventory_ui.set_on_pick_job(
+            lambda job: self.job_logic.setCurrentJob(str(getattr(job, "id", "")))
+        )
+
+        # Cerrar inventario y volver al juego
+        self.inventory_ui.set_on_close_inventory(
+            lambda: setattr(self, "state", GameState.PLAYING)
+        )
 
         # 9) Game Over Logic
         self.game_over = GameOverLogic(self.hud_font, self.small_font)
@@ -85,7 +93,6 @@ class Game:
 
         #11) Pausa Logic
         self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font, self._save_game)
-        self.sfx.set_master_volume(1)
 
 
     # --------- Ciclo principal ---------
@@ -176,6 +183,12 @@ class Game:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.PLAYING
             return
+        
+
+        if(self.pause_menu.muted):
+            self.sfx.set_master_volume_percent(0)
+        else:
+            self.sfx.set_master_volume(20)
     
     def _update_paused(self, dt: float):
         pass
@@ -204,10 +217,8 @@ class Game:
 
             if did_undo is None or did_undo is True:
                 # Sonar trompeta con pequeño fade para evitar "click"
-                #self.sfx.play("undo", fade_ms=20)
+                self.sfx.play("undo", fade_ms=20)
 
-                tx = int(self.player.x // settings.TILE_SIZE)
-                ty = int(self.player.y // settings.TILE_SIZE)
             return
         
 
@@ -302,24 +313,17 @@ class Game:
 
 
     def _inventory_handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_e, pygame.K_ESCAPE):
-                self.state = GameState.PLAYING
-                return
-            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                # Seleccionar como current job
-                sel_id = self.inventory_ui.selected_job_id()
-                if sel_id:
-                    self.job_logic.setCurrentJob(sel_id)  # Actualiza job actual en JobLogic
-                return
-        # Reenviar eventos a la UI (clics y flechas)
+         # Cerrar sin seleccionar
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_e, pygame.K_ESCAPE):
+            self.state = GameState.PLAYING
+            return
+        # Todo lo demás (↑/↓, ENTER/SPACE, ordenamientos) lo atiende el UI
         self.inventory_ui.handle_event(event)
 
 
     def _inventory_update(self, dt):
-        #self.inventory_ui.update(dt)
-        # Refresca con el inventario real (preserva selección)
-        self.inventory_ui.set_jobs(self.job_logic.getInventory(), keep_selection=True)
+        return
+        #self.inventory_ui.set_jobs(self.job_logic.getInventory(), keep_selection=True)
         # Pasa stats al encabezado
 
     def _inventory_draw(self):
