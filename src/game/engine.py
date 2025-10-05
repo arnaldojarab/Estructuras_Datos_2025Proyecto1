@@ -93,7 +93,6 @@ class Game:
 
         #11) Pausa Logic
         self.pause_menu = PauseMenu((window_w, window_h), self.hud_font, self.small_font, self._save_game)
-        self.sfx.set_master_volume(1)
 
 
     # --------- Ciclo principal ---------
@@ -182,6 +181,12 @@ class Game:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.PLAYING
             return
+        
+
+        if(self.pause_menu.muted):
+            self.sfx.set_master_volume_percent(0)
+        else:
+            self.sfx.set_master_volume(20)
     
     def _update_paused(self, dt: float):
         pass
@@ -210,10 +215,8 @@ class Game:
 
             if did_undo is None or did_undo is True:
                 # Sonar trompeta con pequeño fade para evitar "click"
-                #self.sfx.play("undo", fade_ms=20)
+                self.sfx.play("undo", fade_ms=20)
 
-                tx = int(self.player.x // settings.TILE_SIZE)
-                ty = int(self.player.y // settings.TILE_SIZE)
             return
         
 
