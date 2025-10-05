@@ -9,21 +9,21 @@ from dataclasses import asdict
 from .job_loader import JobLoader
 from .job import Job
 
-from .OrderManager import HistoryEntry
+from .job_manager import HistoryEntry
 # ---- Marcadores en pantalla ----
 @dataclass
 class PickupMarker:
     px: int
     py: int
     job_id: str
-    expires_at: float  # absoluto en segundos del reloj interno
+    expires_at: float
 
 @dataclass
 class DropoffMarker:
     px: int
     py: int
     job_id: str
-    due_at: float  # absoluto: si se llega antes => onTime=True
+    due_at: float
 
 
 class JobLogic:
@@ -31,8 +31,6 @@ class JobLogic:
     Maneja ofertas (pickup), aceptaciones (inventory) y entregas (dropoff + history).
     Mantiene y dibuja marcadores y maneja timers relativos.
     """
-
-    # Distancias en tiles
     _PICKUP_RADIUS_TILES = 3
     _DROPOFF_RADIUS_TILES = 3
 
@@ -40,7 +38,6 @@ class JobLogic:
         self.tile_size = tile_size
         self.max_active_offers = max_active_offers
 
-        # Atributos pedidos
         self.jobs = JobLoader()
         self.jobs.load_from_api()
         self.orders = self.jobs.create_order_manager()
@@ -51,15 +48,13 @@ class JobLogic:
 
         self._game_elapsed = 0.0
 
-        # Estado de markers
         self._pickup_markers: List[PickupMarker] = []
         self._dropoff_markers: List[DropoffMarker] = []
 
         # Interno: cada cuánto intento lanzar oferta
         self._offer_interval = 5.0
 
-        # Reputacion
-        self.reputation = 70  # valor inicial
+        self.reputation = 70
 
     # =================== API pública ===================
 
@@ -113,11 +108,6 @@ class JobLogic:
             m = next((d for d in self._dropoff_markers if d.job_id == currentJob.id), None)
             rect = dropoff_icon.get_rect(center=(m.px, m.py))
             screen.blit(dropoff_icon, rect)
-            
-        # Dropoffs (todos)
-        # for m in self._dropoff_markers:
-        #     pygame.draw.circle(screen, (0, 200, 0), (m.px, m.py), 6)
-        #     pygame.draw.circle(screen, (0, 0, 0), (m.px, m.py), 6, 2)
     
     # Getters y Setters
 
@@ -156,11 +146,9 @@ class JobLogic:
         return self.orders.history
     
     def getReputation(self) -> int:
-        """Devuelve la reputación actual (0-100)."""
         return self.reputation
     
     def getMoney(self) -> float:
-        """Devuelve el dinero ganado por entregas."""
         total = 0.0
         for h in self.orders.history:
             if h.accepted:
@@ -169,7 +157,6 @@ class JobLogic:
         return total
     
     def getWeight(self) -> float:
-        "Devuelve el peso de los pedidos en el inventario"
         total = 0.0
         for h in self.orders.inventory:
                 job = self.jobs.get(h)
@@ -177,7 +164,6 @@ class JobLogic:
         return total
 
     def setCurrentJob(self, job_id: str) -> None:
-        """Establece el job actual en inventario (si existe)."""
         self.orders.set_current_job(job_id)
     # =================== Lógica interna ===================
 
@@ -213,7 +199,6 @@ class JobLogic:
         pgx = int(player_x // ts)
         pgy = int(player_y // ts)
 
-        # Pickups primero (aceptar y crear dropoff)
         to_remove_pickups: List[int] = []
         for idx, m in enumerate(self._pickup_markers):
             mgx = int(m.px // ts)
@@ -221,7 +206,7 @@ class JobLogic:
             dist = abs(mgx - pgx) + abs(mgy - pgy)
             if dist <= self._PICKUP_RADIUS_TILES:
                 job = self.jobs.get(m.job_id)
-                # Aceptar en inventario}
+                # Aceptar en inventario
 
                 if(self.getWeight() < 5):
                     self.orders.accept_job(job.id)
@@ -238,7 +223,6 @@ class JobLogic:
         for i in reversed(to_remove_pickups):
             self._pickup_markers.pop(i)
 
-        # Dropoffs (entregar y setear onTime por due_at), solo el current
         currentJob = self.orders.getCurrentJob()
         idx, m = next(((i, d) for i, d in enumerate(self._dropoff_markers) if d.job_id == (currentJob.id if currentJob else None)), (None, None))
         if idx is None or m is None:
@@ -275,7 +259,7 @@ class JobLogic:
         Serializa todo el estado mutable de JobLogic + JobLoader + OrderManager
         en un único diccionario.
         """
-        # 1) Jobs (catálogo maestro)
+        # 1) Jobs
         jobs_list = [job.to_dict() for job in self.jobs._jobs.values()]
 
         # 2) OrderManager
@@ -286,23 +270,22 @@ class JobLogic:
                 for h in self.orders.history
             ],
             "currentJob_id": self.orders.currentJob_id,
-            "release_queue": list(self.orders.release_queue),        # [job_id] en orden
-            "base_ids_sorted": list(self.orders._base_ids_sorted),  # respaldo para recarga cíclica
+            "release_queue": list(self.orders.release_queue),
+            "base_ids_sorted": list(self.orders._base_ids_sorted),
         }
 
         # 3) Markers
         markers_state = {
-            "pickups": [asdict(m) for m in self._pickup_markers],     # [{px,py,job_id,expires_at}]
-            "dropoffs": [asdict(m) for m in self._dropoff_markers],   # [{px,py,job_id,due_at}]
+            "pickups": [asdict(m) for m in self._pickup_markers],
+            "dropoffs": [asdict(m) for m in self._dropoff_markers],
         }
 
-        # 4) Timers/estado de gameplay (solo los necesarios)
+        # 4) Timers/estado de gameplay
         logic_state = {
             "game_elapsed": self._game_elapsed,
             "job_offer_elapsed": self._job_offer_elapsed,
             "reputation": self.reputation,
         }
-
         return {
             "jobs": jobs_list,
             "orders": orders_state,
@@ -320,7 +303,7 @@ class JobLogic:
             if not isinstance(state, dict):
                 return False
 
-            # 1) Jobs -> reconstruir catálogo maestro en JobLoader
+            # 1) Jobs -> reconstruir
             self.jobs._jobs.clear()
             for jd in state.get("jobs", []):
                 job = Job.from_dict(jd)
@@ -349,7 +332,7 @@ class JobLogic:
             self.orders._base_ids_sorted = list(orders_state.get("base_ids_sorted", []))
             self.orders.release_queue = deque(orders_state.get("release_queue", []))
 
-            # 3) Markers -> dataclasses
+            # 3) Markers
             self._pickup_markers.clear()
             for m in state.get("markers", {}).get("pickups", []):
                 self._pickup_markers.append(
@@ -371,7 +354,7 @@ class JobLogic:
                     )
                 )
 
-            # 4) Timers/estado de gameplay: solo los que decidiste persistir
+            # 4) Timers/estado de gameplay
             logic_state = state.get("logic", {})
             self._game_elapsed = float(logic_state.get("game_elapsed", 0.0))
             self._job_offer_elapsed = float(logic_state.get("job_offer_elapsed", 0.0))

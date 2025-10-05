@@ -2,18 +2,14 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Callable
 from ..api_client import APIClient
 from .job import Job
-from .OrderManager import OrderManager
+from .job_manager import OrderManager
 import os
 
 
 class JobLoader:
     """
     Jobs + fábrica de OrderManager.
-    - Usa APIClient.getJobs() para traer los datos (JSON -> Job).
-    - Mantiene un catálogo maestro: Dict[id, Job].
-    - Crea OrderManager ya construido con los IDs (snapshot por partida).
     """
-
     def __init__(self, api_client: Optional[APIClient] = None) -> None:
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", ".."))
         self.api = api_client or APIClient(base_dir)
@@ -23,7 +19,6 @@ class JobLoader:
     def load_from_api(self) -> None:
         """
         Llama a APIClient.getJobs() y carga/normaliza los Jobs.
-        - De-duplica por id (último gana).
         - Valida cada job (Job.validate()).
         """
         jobs_raw = self.api.get_jobs()  # se espera: list[dict] con la estructura del pedido
@@ -62,7 +57,6 @@ class JobLoader:
         return list(self._jobs.keys())
 
     def snapshot_ids(self) -> List[str]:
-        """IDs congelados para una partida."""
         return list(self._jobs.keys())
 
     def size(self) -> int:

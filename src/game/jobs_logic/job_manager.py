@@ -8,22 +8,9 @@ from .job import Job
 class HistoryEntry:
     job_id: str
     accepted: bool
-    onTime: bool = False  # se actualizará a True cuando se entregue a tiempo
+    onTime: bool = False
 
 class OrderManager:
-    """
-    Estructuras de ejecución (simplificadas):
-      1) release_queue: cola (deque) con IDs ordenados por release_time
-         - Métodos: fill_release_queue_from_repo(), pop_next_job()
-         - Cuando queda vacía, se recarga (repiten los mismos trabajos)
-      2) history: lista de HistoryEntry (accepted, onTime, job_id)
-      3) inventory: lista de IDs aceptados pero no entregados
-
-    Además:
-      - currentJob_id: ID del job activo
-      - repo: objeto con get(job_id)->Job y snapshot_ids()->list[str] (JobLoader)
-    """
-
     def __init__(self, repo) -> None:
         self.repo = repo
 
@@ -86,16 +73,12 @@ class OrderManager:
         # Registrar la entrega directamente en el historial
         self.history.append(HistoryEntry(job_id=job_id, accepted=True, onTime=delivered_on_time))
 
-        # Si el entregado era el actual, selecciona otro o None
         self.set_current_job_default()
         
         return True
 
     # ---------- (3) Inventario ----------
     def accept_job(self, job_id: str) -> None:
-        """
-        Añade un job aceptado al inventario (si no estaba). No valida pesos/capacidad aquí.
-        """
         if job_id not in self.inventory:
             self.inventory.append(job_id)
         # Si no hay current, lo selecciona por conveniencia
