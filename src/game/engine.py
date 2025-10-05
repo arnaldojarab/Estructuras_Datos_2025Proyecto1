@@ -247,7 +247,7 @@ class Game:
             dy *= diag
 
         self.player.move_with_collision(dx, dy, self.map, self.job_logic.getWeight(), self.weather.get_current_condition())
-        self.player.update(dt, self.job_logic.getWeight())
+        self.player.update(dt)
 
 
         # 3) Actualiza Estadísticas

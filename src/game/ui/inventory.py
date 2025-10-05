@@ -233,7 +233,6 @@ class InventoryUI:
 
             y += self.row_h
 
-    # ---------- Vista ordenada (no muta JobLogic) ----------
     def _get_jobs_view(self) -> List[JobT]:
         """Obtiene el inventario desde JobLogic y aplica un orden local (si procede)."""
         jobs: List[JobT] = self.job_logic.getInventory()  # <- single source of truth
@@ -256,5 +255,4 @@ class InventoryUI:
                 return d if d is not None else datetime.max
             return sorted(jobs, key=_deadline_key, reverse=self._sort_desc)
 
-        # Sin clave conocida: devuelve como está en JobLogic
         return jobs

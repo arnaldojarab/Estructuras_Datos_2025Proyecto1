@@ -8,14 +8,16 @@ from . import settings
 class Player:
     def __init__(self, cell_pos):
         ts = settings.TILE_SIZE
-        # Centro del tile inicial
+
         self.x = cell_pos[0] * ts + ts // 2
         self.y = cell_pos[1] * ts + ts // 2
-        # Radio proporcional al tamaño del tile (ajusta si quieres más/menos “gordo”)
+
+        # Radio proporcional al tamaño del tile
         self.radius = int(ts * 0.35)
-         # --- resistencia ---
-        self.stamina = 100        # valor inicial
-        self.exhausted = False    # estado actual
+
+         # resistencia 
+        self.stamina = 100        
+        self.exhausted = False   
 
         # --- imagen del jugador ---
         self.base_image = self._select_Image()
@@ -27,10 +29,11 @@ class Player:
         self.angle = 0  
 
          # --- historial de posiciones para "Ctrl+Z" ---
-        self._pos_history = deque(maxlen=50)  # ring buffer
+
+        self._pos_history = deque(maxlen=50)  
         self._snapshot_timer = 0.0
         self._snapshot_every = 1.5           # segundos entre snapshots
-        self._pos_history.append((self.x, self.y))  # punto de partida
+        self._pos_history.append((self.x, self.y))  
 
     def _select_Image(self):
         assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "images")
@@ -38,10 +41,7 @@ class Player:
 
 
     def _collides_at(self, nx, ny, game_map):
-        """
-        ¿Colisiona el círculo del jugador centrado en (nx, ny) con algún tile bloqueado?
-        Revisamos los tiles del AABB que envuelve al círculo.
-        """
+    
         ts = settings.TILE_SIZE
         left_tx   = int((nx - self.radius) // ts)
         right_tx  = int((nx + self.radius) // ts)
@@ -55,10 +55,6 @@ class Player:
         return False
 
     def move_with_collision(self, dx, dy, game_map, weight, weather):
-        """
-        Movimiento con separación de ejes (X luego Y) para permitir “deslizamiento” suave
-        al chocar con paredes. Bloquea el eje donde habría colisión.
-        """
 
         stamina_cost = 0.5
 
@@ -89,21 +85,16 @@ class Player:
             self.rect.center = (self.x, self.y)
 
 
-        # Si efectivamente se movió, baja resistencia
+        # Control de la stamina
         if (self.x, self.y) != (old_x, old_y):
             self.stamina = max(0, self.stamina - (stamina_cost / 2))
             if self.stamina <= 0:
                 self.exhausted = True
 
-    def update(self, dt, peso):
-        """
-        Recupera stamina con el tiempo.
-        dt: delta time en segundos
-        """
-
-        recover_rate = 10 * dt  # puntos por segundo (ajusta)
-
+    def update(self, dt):
+        "Delta time es tiempo en segundos."
         
+        recover_rate = 10 * dt  # puntos por segundo (ajusta)
 
         if self.exhausted:
             # Solo recupera hasta 30%
@@ -128,11 +119,9 @@ class Player:
         bar_w, bar_h = 120, 14   # tamaño de la barra
         margin = 10              # margen desde los bordes
 
-        # Calcular coordenadas (arriba a la derecha)
         x = screen.get_width() - bar_w - margin
         y = margin
 
-        # fondo gris
         pygame.draw.rect(screen, (100, 100, 100), (x, y, bar_w, bar_h))
 
         # parte proporcional
@@ -250,7 +239,6 @@ class Player:
             self._snapshot_timer = float(snaps.get("timer", 0.0))
 
             items = snaps.get("items", [[self.x, self.y]])
-            # list[list[x,y]] -> deque[tuple(x,y)]
             self._pos_history = deque(( (float(px), float(py)) for px, py in items ), maxlen=maxlen)
 
             # Asegura que haya al menos un punto
