@@ -36,15 +36,6 @@ GO_TABLE_ROW_BORDER_RADIUS = 6
 
 
 class GameOverLogic:
-    """
-    Encapsulates the full Game Over flow:
-      Phases:
-        - "ASK": ask to save score (←/→ to select Sí/No, Enter to confirm)
-        - "NAME": input player name (1–4 chars, any unicode, Backspace/Enter)
-        - "TABLE": show top-5 table + player's row (highlighted), and a Continue button
-    Engine should call: enter(score), handle_event(event), update(dt), draw(screen), is_done()
-    """
-
     def __init__(self, hud_font: pygame.font.Font, small_font: pygame.font.Font):
         self.hud_font = hud_font
         self.small_font = small_font
@@ -52,22 +43,17 @@ class GameOverLogic:
         self.title = "GAME OVER"
         self.win = False
 
-
-        # Runtime state
         self._phase: Optional[str] = None      # "ASK" | "NAME" | "TABLE"
         self._choice_idx: int = 0              # 0 => "Sí", 1 => "No"
         self._name_buf: str = ""               # typed name (1..4)
-        self._user_score: float = 0.0          # rounded to GO_SCORE_DECIMALS
-        self._rows: List[Dict] = []            # prepared rows for TABLE
+        self._user_score: float = 0.0
+        self._rows: List[Dict] = []
         self._continue_rect: Optional[pygame.Rect] = None
-        self._done: bool = False               # True when we must exit to MENU
+        self._done: bool = False
 
-        # Future persistence path (for later)
-        # Build path relative to this file: <repo_root>/data/puntajes.json
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.storage_path = os.path.normpath(os.path.join(base_dir, "..", "..", "..", "data", "puntajes.json"))
 
-        # Burned-in base scores (sorted later)
         self._base_scores: List[Dict[str, object]] = []
 
         self._base_scores = self._load_scores()
@@ -75,7 +61,6 @@ class GameOverLogic:
     # -------- Public API --------
 
     def enter(self, score: float) -> None:
-        """Start Game Over flow with the given final score."""
         self._phase = "ASK"
         self._choice_idx = 0
         self._name_buf = ""
@@ -103,7 +88,6 @@ class GameOverLogic:
                 self._done = True
 
     def update(self, dt: float) -> None:
-        # Nothing to update yet; timers are paused during Game Over
         pass
 
     def draw(self, screen: pygame.Surface) -> None:
@@ -113,7 +97,6 @@ class GameOverLogic:
         pygame.draw.rect(screen, settings.MENU_BG, pygame.Rect(0, 0, W, H))
 
         # Title
-
         if self.win:
             title_surf = self.title_font.render(self.title, True, settings.TEXT_GREEN)
         else:
@@ -130,14 +113,13 @@ class GameOverLogic:
             self._draw_table(screen, W, H)
 
     def is_done(self) -> bool:
-        """Returns True when flow is finished and engine should go back to MENU."""
         return self._done
 
     # -------- Internal handlers --------
 
     def _handle_ask_keydown(self, event: pygame.event.Event) -> None:
         if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
-            self._choice_idx = 1 - self._choice_idx  # toggle 0 <-> 1
+            self._choice_idx = 1 - self._choice_idx 
         elif event.key == pygame.K_RETURN:
             if self._choice_idx == 1:  # "No"
                 self._done = True
@@ -151,7 +133,6 @@ class GameOverLogic:
             if len(self._name_buf) >= 1:
                 name = self._name_buf
                 if len(name) < 4:
-                    # pad with spaces (later you can trim before saving if needed)
                     name = name + (" " * (4 - len(name)))
                 self._prepare_rows(name, self._user_score)
                 self._append_and_save(name, self._user_score)
@@ -173,7 +154,6 @@ class GameOverLogic:
     # -------- Data prep --------
 
     def _load_scores(self) -> List[Dict[str, object]]:
-        """Load scores from JSON; fallback to DEFAULT_SCORES if file missing or invalid."""
         try:
             if not os.path.exists(self.storage_path):
                 return []
@@ -186,29 +166,20 @@ class GameOverLogic:
         return []
 
     def _save_scores(self, rows: List[Dict[str, object]]) -> None:
-        """Persist scores list to JSON (pretty-printed)."""
         try:
             os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
             with open(self.storage_path, "w", encoding="utf-8") as f:
                 json.dump(rows, f, ensure_ascii=False, indent=2)
         except Exception:
-            # Silent fail by design; you could log if you have a logger
             pass
 
     def _append_and_save(self, name: str, score: float) -> None:
-        """Append new entry and persist; update in-memory base list as well."""
         current = self._load_scores()
         current.append({"name": name, "score": float(round(score, settings.GO_SCORE_DECIMALS))})
         self._save_scores(current)
         self._base_scores = current
 
     def _prepare_rows(self, player_name: str, player_score: float) -> None:
-        """
-        Build table rows:
-          - If player in top-3: show top-3 including player (highlighted).
-          - Else: show base top-3, then a dotted '...' row, then player's row highlighted.
-        Each row dict: {rank: int|None, name: str, score: float|None, is_player: bool}
-        """
         base = list(self._base_scores)
         base.sort(key=lambda r: r["score"], reverse=True)
 
@@ -269,22 +240,19 @@ class GameOverLogic:
           # Hover detection
           is_hovered = rect.collidepoint(mouse_pos)
           if is_hovered:
-              hover_idx = i  # remember hovered to force selection below
+              hover_idx = i
 
-          # Visual selection: hovered OR current keyboard selection
           selected = is_hovered or (i == self._choice_idx)
           bg = settings.GO_BUTTON_BG_SELECTED if selected else settings.BUTTON_BG
           pygame.draw.rect(screen, bg, rect, border_radius=GO_BUTTON_BORDER_RADIUS)
           screen.blit(text, (rect.centerx - text.get_width() // 2, rect.centery - text.get_height() // 2))
 
-          # Click on hovered acts like pressing Enter on that option
           if is_hovered and mouse_pressed[0]:
               if i == 1:  # "No"
                   self._done = True
               else:       # "Sí"
                   self._phase = "NAME"
 
-      # If hovering any button, make it the sole selected one (deselect the other)
       if hover_idx is not None:
           self._choice_idx = hover_idx
 
@@ -295,7 +263,7 @@ class GameOverLogic:
         prompt_surf = self.hud_font.render(prompt, True, settings.GO_TEXT_COLOR)
         screen.blit(prompt_surf, (W // 2 - prompt_surf.get_width() // 2, int(H * GO_NAME_PROMPT_Y_RATIO)))
 
-        # Input box (use a light neutral; can be themed later if desired)
+        # Input box
         rect = pygame.Rect(W // 2 - GO_NAME_BOX_WIDTH // 2, int(H * GO_NAME_BOX_Y_RATIO),
                            GO_NAME_BOX_WIDTH, GO_NAME_BOX_HEIGHT)
         pygame.draw.rect(screen, (240, 240, 240), rect, border_radius=GO_NAME_BOX_BORDER_RADIUS)
