@@ -166,28 +166,42 @@ class WeatherManager:
             "from_multiplier": self.from_multiplier,
             "to_multiplier": self.to_multiplier,
             "burst_duration": self.burst_duration,
+            "transition_duration": self.transition_duration,  # añadido
+            "visuals": self.visuals.save_state()
         }
-        base_state["visuals"] = self.visuals.save_state()
         return base_state
+
 
     def load_state(self, state: dict):
         try:
             if not isinstance(state, dict):
                 return False
-            self.current_condition = state["current_condition"]
+
+            # Estado base
+            self.current_condition = state.get("current_condition", "clear")
             self.current_intensity = state.get("current_intensity", 0.0)
             self.transitioning = state.get("transitioning", False)
             self.from_multiplier = state.get("from_multiplier", self.BASE_MULTIPLIERS[self.current_condition])
             self.to_multiplier = state.get("to_multiplier", self.BASE_MULTIPLIERS[self.current_condition])
             self.burst_duration = state.get("burst_duration", self._random_burst_duration())
+            self.transition_duration = state.get("transition_duration", random.uniform(3, 5))
+
             burst_remaining = state.get("burst_remaining", self.burst_duration)
             self.burst_elapsed = self.burst_duration - burst_remaining
 
             if self.transitioning:
                 progress = state.get("transition_progress", 0.0)
                 self.transition_elapsed = progress * self.transition_duration
+            else:
+                self.transition_elapsed = 0.0
 
-            self.visuals.load_state(state.get("visuals", {}))
+            # Restaurar parte visual
+            visuals_state = state.get("visuals", {})
+            self.visuals.load_state(visuals_state)
+
+            
+            
+
             return True
         except Exception:
             return False

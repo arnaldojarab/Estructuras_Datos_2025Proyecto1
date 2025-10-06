@@ -274,22 +274,38 @@ class WeatherVisuals:
         screen.blit(overlay,(0,0))
 
     # --- SERIALIZACIÓN DE NUBES ---
-    def save_state(self) -> list:
-        return [c.to_dict() for c in self.clouds]
+    def save_state(self) -> dict:
+        return {
+            "clouds": [c.to_dict() for c in self.clouds],
+            "alphas": self.alphas,
+            "_cloud_spawn_timer": self._cloud_spawn_timer,
+            "_max_clouds": self._max_clouds,
+            "wind_gusts": self.wind_gusts,
+            "lightning_alpha": self.lightning_alpha
+        }
 
-    def load_state(self, clouds_data: list):
+    def load_state(self, data: dict):
+        # Restaurar nubes
+        clouds_data = data.get("clouds", [])
         self.clouds = []
         for cdata in clouds_data:
             variant_index = cdata.get("variant_index", 0)
             nubes = self._select_Image_by_index(variant_index)
-            white = nubes[0]
-            gray = nubes[1]
+            white, gray = nubes
             cloud = Cloud.from_dict(cdata, white, gray)
             self.clouds.append(cloud)
 
+        # Restaurar parámetros visuales
+        self.alphas = data.get("alphas", self.alphas)
+        self._cloud_spawn_timer = data.get("_cloud_spawn_timer", 0.0)
+        self._max_clouds = data.get("_max_clouds", 0)
+        self.wind_gusts = data.get("wind_gusts", [])
+        self.lightning_alpha = data.get("lightning_alpha", 0)
+
     def _select_Image_by_index(self, num):
-        assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "clouds")
+        assets_dir = os.path.join(os.path.dirname(__file__), "..","..", "assets", "clouds")
         nubes = []
         nubes.append(pygame.image.load(os.path.join(assets_dir, f"cloud_white{num}.png")).convert_alpha())
         nubes.append(pygame.image.load(os.path.join(assets_dir, f"cloud_gray{num}.png")).convert_alpha())
         return nubes
+    
