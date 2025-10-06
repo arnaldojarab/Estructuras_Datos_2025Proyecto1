@@ -64,3 +64,9 @@ La lógica del clima se divide en tres clases: WeatherManager, que maneja la ló
 ### Estructuras de datos usadas en WeatherVisuals:
 - **clouds**: Es una lista que almacena los objetos Cloud que están activos.
 **wind_gusts**: Es una lista que almacena datos sobre los efectos de las ráfagas de viento; cada ráfaga es otra lista de atributos: `[x, y, speed, length, thickness, phase, freq, amp]`.
+
+## Game Over Menu
+
+### Estructuras encontradas en `game_over`
+
+- **_rows**: Lista de diccionarios que guardan informacion sobre los 3 jugadores con los mejores puntajes y el jugador actual. 
