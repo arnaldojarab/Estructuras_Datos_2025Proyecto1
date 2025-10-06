@@ -2,6 +2,10 @@
 TILE_SIZE = 20
 FPS = 60
 
+# --- TIMER ---
+TIMER_START_SECONDS = 60 #*10
+TIMER_TEXT = (240, 240, 240)
+
 # Movement & stamina
 BASE_SPEED = 3.0  # celdas/seg
 STAMINA_MAX = 100
@@ -36,13 +40,9 @@ GO_TITLE_FONT_SIZE = 35        # reutiliza fuente del HUD
 # Formato de puntaje
 GO_SCORE_DECIMALS = 2
 
-# --- TIMER ---
-TIMER_START_SECONDS = 60 #*10 # 10 minutos TODO modificar por ahora 60 segundos
-TIMER_TEXT = (240, 240, 240)
-
 # --- Tipografía ---
 STATS_FONT_SIZE = 20
 
 # --- Condicion Victoria y derrrota ---
-META_INGRESOS = 9000.0
+META_INGRESOS = TIMER_START_SECONDS*15
 MIN_REPUTACION = 20

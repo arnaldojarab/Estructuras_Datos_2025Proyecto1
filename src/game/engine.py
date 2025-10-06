@@ -320,14 +320,14 @@ class Game:
         self.inventory_ui.draw(self.screen)
 
     def get_score(self) -> float:
-      # TODO: ajustar fórmula de score
-      """
-      score_base = suma de pagos * pay_mult (por reputación alta)
-      bonus_tiempo = +X si terminas antes del 20% del tiempo restante
-      penalizaciones = -Y por cancelaciones/caídas (opcional)
-      score = score_base + bonus_tiempo - penalizaciones
-      """
-      return self.job_logic.getMoney()
+      pago = self.job_logic.getMoney()
+      pay_mult = 1 + self.job_logic.getReputation()/100
+      bonus_tiempo = 2000 if self.statistics_logic.time_left > 0.2 * settings.TIMER_START_SECONDS else 0
+      penalizaciones = 1500 if self.job_logic.reputation < 50 else 0
+
+      score = pago * pay_mult + bonus_tiempo - penalizaciones
+
+      return score
     
     def _save_game(self, filename: str) -> bool:
       # --- sanea y normaliza el nombre ---
