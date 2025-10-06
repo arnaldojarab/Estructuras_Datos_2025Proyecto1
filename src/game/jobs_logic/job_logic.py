@@ -56,6 +56,8 @@ class JobLogic:
 
         self.reputation = 70
 
+        self.weight_warning = False
+
     # =================== API pública ===================
 
     def reset(self) -> None:
@@ -217,8 +219,12 @@ class JobLogic:
                     due_at = self._game_elapsed + self._DROPOFF_LATE_AFTER
                     self._dropoff_markers.append(DropoffMarker(qx, qy, job.id, due_at))
                     to_remove_pickups.append(idx)
+                    self.weight_warning = False
                 else:
-                    print("Peso maximo alcanzado")
+                    if not self.weight_warning:
+                        #print("Peso maximo alcanzado")
+                        print("Peso maximo alcanzado")
+                        self.weight_warning = True
 
         for i in reversed(to_remove_pickups):
             self._pickup_markers.pop(i)
