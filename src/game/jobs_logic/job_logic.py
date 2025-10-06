@@ -65,6 +65,7 @@ class JobLogic:
         self._dropoff_markers.clear()
         self._job_offer_elapsed = 3.0
         self._game_elapsed = 0.0
+        self.reputation = 70
 
     def update(self, dt: float, player_x: float, player_y: float) -> None:
         """Avanza timers, lanza ofertas, expira pickups y verifica proximidades."""
@@ -187,7 +188,7 @@ class JobLogic:
             if self._game_elapsed >= m.expires_at:
                 self.orders.record_offer_result(m.job_id, accepted=False)
                 print(f"Pedido expirado (agregado al historial como rechazado), id: {m.job_id}")
-                self.reputation -= 5  # penalización por no aceptar
+                self.reputation -= 10  # penalización por no aceptar
                 if self.reputation < 0:
                     self.reputation = 0
                 to_remove.append(idx)

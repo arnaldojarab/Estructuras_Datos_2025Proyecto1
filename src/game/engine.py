@@ -178,6 +178,7 @@ class Game:
         if action == "exit":
             self._reset_run()
             self.menu.reset_menu()
+            self.statistics_logic.reset()
             self.state = GameState.MENU
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.state = GameState.PLAYING
@@ -272,6 +273,7 @@ class Game:
         if self.game_over.is_done():
             self._reset_run()
             self.menu.reset_menu()
+            self.statistics_logic.reset()
             self.state = GameState.MENU
 
     def _draw_gameover(self):
