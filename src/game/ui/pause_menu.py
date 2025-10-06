@@ -4,7 +4,7 @@ from .. import settings
 from .button import Button
 from typing import Callable, Optional
 
-# constantes locales (arriba del todo o bajo los imports)
+# constantes locales
 PM_TITLE_Y_RATIO = 0.12
 PM_NAME_PROMPT_Y_RATIO = 0.32
 PM_NAME_BOX_Y_RATIO = 0.45
@@ -44,21 +44,19 @@ class PauseMenu:
 
         # Botón circular de mute (se posiciona en _layout)
         self.mute_center = (0, 0)
-        self._mute_rect = None  # bounding box del icono (para hover/click)
+        self._mute_rect = None  # bounding box del icono
         self._layout((self.w, self.h))
 
-        # Entrada de nombre para el archivo de guardado
         self._fname_buf = "slot-1"    # valor por defecto, editable
         self._fname_max = 60          # máximo de caracteres
 
-        # Resultado del guardado (None hasta intentar)
+        # Resultado del guardado
         self._save_ok: Optional[bool] = None
 
-        # Botón continuar en pantalla de resultado
         self.btn_continue = None
 
         # Control de entrada de texto (TEXTINPUT)
-        self._ti_active = False  # True mientras estamos capturando TEXTINPUT
+        self._ti_active = False
 
     # -------- Public API --------
     def getMuted(self) -> bool:
@@ -69,12 +67,10 @@ class PauseMenu:
 
     def draw(self, surface: pygame.Surface):
         
-        # Adaptarse a cambios de tamaño
         current_size = surface.get_size()
         if current_size != (self.w, self.h):
             self._layout(current_size)
 
-        # Fondo
         pygame.draw.rect(surface, settings.MENU_BG, self.panel_rect)
 
         if self.phase == "MAIN":
@@ -85,11 +81,8 @@ class PauseMenu:
             self._draw_result(surface)
 
     def _draw_main(self, surface: pygame.Surface):
-      # Botón Guardar
       self.btn_save.draw(surface)
-      # Botón Salir
       self.btn_exit.draw(surface)
-      # Ícono mute
       mouse_pos = pygame.mouse.get_pos()
       icon = self.icon_muted if self.muted else self.icon_unmuted
       if icon:
@@ -132,7 +125,6 @@ class PauseMenu:
       text_surf = self.font.render(self._fname_buf, True, settings.TEXT_DARK)
       surface.blit(text_surf, (rect.centerx - text_surf.get_width() // 2,
                               rect.centery - text_surf.get_height() // 2))
-
       # Hint
       hint = "Enter para confirmar"
       hint_surf = self.small_font.render(hint, True, settings.GO_TEXT_COLOR)
@@ -141,7 +133,6 @@ class PauseMenu:
     def _draw_result(self, surface: pygame.Surface):
       W, H = self.w, self.h
 
-      # Título según resultado
       if self._save_ok:
           title = "Guardado Correctamente"
           title_surf = self.font.render(title, True, settings.TEXT_GREEN)
@@ -151,7 +142,6 @@ class PauseMenu:
 
       surface.blit(title_surf, (W // 2 - title_surf.get_width() // 2, int(H * PM_TITLE_Y_RATIO)))
 
-      # Botón Continuar
       if self.btn_continue:
           self.btn_continue.draw(surface)
 
@@ -175,7 +165,7 @@ class PauseMenu:
             fg=settings.TEXT_DARK,
         )
 
-        # Botón "Salir" (debajo de Guardar)
+        # Botón "Salir"
         gap_between = 16
         exit_y = btn_y + btn_h + gap_between
         self.btn_exit = Button(
@@ -188,10 +178,9 @@ class PauseMenu:
         )
 
         # Posicionar el botón circular de mute
-        gap_below = 72  # separación por debajo del botón salir
+        gap_below = 72
         self.mute_center = (self.w // 2, exit_y + btn_h + gap_below)
 
-        # Si estamos en RESULT, (re)creamos botón Continuar centrado
         if self.phase == "RESULT":
             cont_surf = self.font.render("Continuar", True, settings.TEXT_DARK)
             btn_w2 = cont_surf.get_width() + PM_BUTTON_PADDING_X * 2
@@ -210,12 +199,10 @@ class PauseMenu:
             self.btn_continue = None
 
     def _load_icon(self, filename: str, size: int) -> pygame.Surface | None:
-        """Carga un PNG desde src/assets/ui_icons/ y lo escala al tamaño indicado (con alpha)."""
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
             path = os.path.normpath(os.path.join(base_dir, "..", "..", "assets", "ui_icons", filename))
             img = pygame.image.load(path).convert_alpha()
-            # Mantener proporción al escalar dentro de un cuadrado size×size
             img = pygame.transform.smoothscale(img, (size, size))
             return img
         except Exception:
@@ -225,7 +212,6 @@ class PauseMenu:
       # ------- FASE MAIN -------
       if self.phase == "MAIN":
           if self.btn_save.handle_event(event):
-              # Ir a fase de nombre
               self.phase = "NAME"
               self._fname_buf = "slot-1"
               try:
@@ -246,7 +232,6 @@ class PauseMenu:
 
       # ------- FASE NAME (entrada de texto) -------
       if self.phase == "NAME":
-          # Texto "real" (tildes, símbolos, etc.)
           if event.type == pygame.TEXTINPUT:
               if len(self._fname_buf) < self._fname_max:
                   self._fname_buf += event.text
@@ -258,7 +243,6 @@ class PauseMenu:
                   self._fname_buf = self._fname_buf[:-1]
                   return None
               if event.key == pygame.K_RETURN:
-                  # Confirmar y llamar callback con el nombre
                   fname = self._fname_buf if len(self._fname_buf) > 0 else "slot-1"
                   ok = False
                   if self.on_save:
@@ -272,10 +256,9 @@ class PauseMenu:
                   finally:
                       self._ti_active = False
 
-                  self._layout((self.w, self.h))  # crear botón "Continuar"
+                  self._layout((self.w, self.h))
                   return None
               if event.key == pygame.K_ESCAPE:
-                  # Cancelar y volver a pausa
                   try:
                       pygame.key.stop_text_input()
                   except Exception:

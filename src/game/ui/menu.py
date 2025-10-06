@@ -21,11 +21,11 @@ class MainMenu:
         # phases: MAIN (botones principales) | LOAD (lista de partidas)
         self.phase = "MAIN"
 
-        # icon (will be loaded once)
+        # icon 
         self.icon_surf = self._load_circular_icon(size=224)
         self.icon_rect = pygame.Rect(0, 0, 0, 0)
 
-        # placeholders; computed in _layout()
+        # placeholders
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
         self.btn_start = None
         self.btn_load = None
@@ -40,12 +40,10 @@ class MainMenu:
     def _load_circular_icon(self, size: int) -> pygame.Surface | None:
         """Load the icon and make it circular with per-pixel alpha."""
         try:
-            # Build path relative to this file: src/game/ui/menu.py -> ../../assets/images/kimby_icon_1.png
             base_dir = os.path.dirname(os.path.abspath(__file__))
             icon_path = os.path.normpath(os.path.join(base_dir, "..", "..", "assets", "images", "kimby_icon_2.png"))
 
             img = pygame.image.load(icon_path).convert_alpha()
-            # fit square
             min_side = min(img.get_width(), img.get_height())
             img = img.subsurface(pygame.Rect(
                 (img.get_width() - min_side)//2,
@@ -54,7 +52,6 @@ class MainMenu:
             )).copy()
             img = pygame.transform.smoothscale(img, (size, size))
 
-            # circular mask
             mask = pygame.Surface((size, size), pygame.SRCALPHA)
             pygame.draw.circle(mask, (255, 255, 255, 255), (size//2, size//2), size//2)
 
@@ -70,7 +67,7 @@ class MainMenu:
         self.w, self.h = screen_size
         self.panel_rect = pygame.Rect(0, 0, self.w, self.h)
 
-        # MAIN buttons (centrados)
+        # MAIN buttons
         btn_w, btn_h = 248, 54
         gap_y = 16                   # separación entre botones
         icon_gap = 48                # separación entre icono y primer botón
@@ -133,7 +130,7 @@ class MainMenu:
         self._layout(screen_size)
 
     def draw(self, surface: pygame.Surface):
-        # Si el tamaño del surface cambió, adapta el layout al vuelo
+        # Si el tamaño del surface cambió, adapta el layout al nuevo
         current_size = surface.get_size()
         if current_size != (self.w, self.h):
             self._layout(current_size)
@@ -143,7 +140,7 @@ class MainMenu:
         surface.blit(self.bg_surf, (0, 0)) 
         
         if self.phase == "MAIN":
-            # Icon (circular), if loaded
+            # Icon
             if self.icon_surf and self.icon_rect.width > 0:
                 surface.blit(self.icon_surf, (self.icon_rect.x, self.icon_rect.y))
             self._draw_main(surface)
@@ -156,8 +153,7 @@ class MainMenu:
 
     def _draw_load(self, surface: pygame.Surface):
         # Título
-        # Título con contorno por letra
-        title = self.load_title  # o el string que corresponda
+        title = self.load_title
         title_surf = self.font.render(title, True, settings.TEXT_LIGHT)
         title_x = self.w // 2 - title_surf.get_width() // 2
         title_y = int(self.h * 0.18)
@@ -169,11 +165,9 @@ class MainMenu:
             (title_x, title_y),
             color_fg=settings.TEXT_LIGHT,       # color de las letras
             color_outline=settings.MENU_BG,     # color del contorno
-            outline_width=2                      # grosor del contorno (ajústalo)
+            outline_width=2                     # grosor del contorno (ajústalo)
         )
 
-
-        # Feedback si no hay saves
         if self.load_feedback:
             fb = self.font.render(self.load_feedback, True, settings.TEXT_RED)
             fb_x = self.w // 2 - fb.get_width() // 2
@@ -183,12 +177,9 @@ class MainMenu:
             surface.blit(fb, (fb_x, fb_y))
 
         else:
-          # Botones por archivo
           for b in self.save_buttons:
               b.draw(surface)
 
-
-        # Hint simple
         hint = "ESC para volver"
         hint_surf = pygame.font.Font(settings.UI_FONT_NAME, 18).render(hint, True, settings.BUTTON_BG)
         surface.blit(hint_surf, (self.w // 2 - hint_surf.get_width() // 2 , int(self.h * 0.88)))
@@ -238,8 +229,6 @@ class MainMenu:
         """Crea botones para cada .sav en /saves, centrados en vertical."""
         self.save_buttons.clear()
         self.load_feedback = None
-
-
         base_dir = os.path.dirname(os.path.abspath(__file__))
         saves_dir = os.path.join(base_dir, "..", "..", "..", "saves")
 
@@ -252,8 +241,6 @@ class MainMenu:
             entries.sort(key=str.lower)
         except Exception:
             entries = []
-
-        # Crear botones verticales centrados
         btn_w, btn_h = 320, 48
         total_h = len(entries) * btn_h + max(0, (len(entries) - 1)) * 10
         y0 = self.h // 2 - total_h // 2
@@ -264,7 +251,7 @@ class MainMenu:
             self.save_buttons.append(
                 Button(
                     rect=pygame.Rect(x, y, btn_w, btn_h),
-                    text=fname,  # muestra el nombre con .sav
+                    text=fname,
                     font=self.font,
                     bg=settings.MENU_BG,
                     bg_hover=settings.MENU_BG_HOVER,
@@ -272,7 +259,7 @@ class MainMenu:
                 )
             )
 
-        # Si no hay saves, deja un feedback mínimo (opcional)
+        # Si no hay saves, deja un feedback mínimo
         if not self.save_buttons:
             self.load_feedback = "No se encontraron partidas guardadas."
 
@@ -283,8 +270,6 @@ def draw_text_outline(surface, text, font, pos, color_fg, color_outline, outline
     base = font.render(text, True, color_fg)
     # Render auxiliar en color de contorno
     outline_surf = font.render(text, True, color_outline)
-
-    # Offsets alrededor (8 direcciones + diagonales). Puedes añadir más para un borde más redondo.
     offsets = []
     r = outline_width
     for dx in (-r, 0, r):
@@ -295,6 +280,4 @@ def draw_text_outline(surface, text, font, pos, color_fg, color_outline, outline
 
     for dx, dy in offsets:
         surface.blit(outline_surf, (x + dx, y + dy))
-
-    # Texto principal encima
     surface.blit(base, (x, y))
