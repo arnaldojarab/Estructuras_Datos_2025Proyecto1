@@ -365,21 +365,11 @@ class GameOverLogic:
         btn_w = btn_surf.get_width() + GO_BUTTON_PADDING_X * 2
         btn_h = btn_surf.get_height() + GO_BUTTON_PADDING_Y * 2
         btn_x = W // 2 - btn_w // 2
-        btn_y = int(H * GO_CONTINUE_BTN_Y_RATIO)
+        btn_y = int(H * GO_CONTINUE_BTN_Y_RATIO) + 40
         btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
-        pygame.draw.rect(screen, settings.BUTTON_BG, btn_rect, border_radius=GO_BUTTON_BORDER_RADIUS)
         screen.blit(btn_surf, (btn_rect.centerx - btn_surf.get_width() // 2,
                                btn_rect.centery - btn_surf.get_height() // 2))
         self._continue_rect = btn_rect
-
-        # Continue button
-        btn_label = "Continuar"
-        btn_surf = self.hud_font.render(btn_label, True, settings.TEXT_DARK)
-        btn_w = btn_surf.get_width() + GO_BUTTON_PADDING_X * 2
-        btn_h = btn_surf.get_height() + GO_BUTTON_PADDING_Y * 2
-        btn_x = W // 2 - btn_w // 2
-        btn_y = int(H * GO_CONTINUE_BTN_Y_RATIO)
-        btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
 
         # Hover detection
         mouse_pos = pygame.mouse.get_pos()
