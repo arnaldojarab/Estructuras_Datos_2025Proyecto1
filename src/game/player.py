@@ -28,11 +28,10 @@ class Player:
         # Ángulo actual en grados
         self.angle = 0  
 
-         # --- historial de posiciones para "Ctrl+Z" ---
 
         self._pos_history = deque(maxlen=50)  
         self._snapshot_timer = 0.0
-        self._snapshot_every = 1.5           # segundos entre snapshots
+        self._snapshot_every = 1.5           # Cada cuanto hace un "snapshot" o el guardado de pos
         self._pos_history.append((self.x, self.y))  
 
     def _select_Image(self):
@@ -73,28 +72,24 @@ class Player:
             self.y = ny
 
 
-        # Si se movió, actualiza dirección (ángulo)
         if dx != 0 or dy != 0:
-            # atan2 devuelve radianes, se convierte a grados
             self.angle = -math.degrees(math.atan2(dy, dx))  
-            # Rotar la imagen manteniendo el centro
             self.image = pygame.transform.rotate(self.base_image, self.angle)
             self.rect = self.image.get_rect(center=(self.x, self.y))
         else:
-            # Solo actualizar rect sin rotar
             self.rect.center = (self.x, self.y)
 
 
-        # Control de la stamina
         if (self.x, self.y) != (old_x, old_y):
             self.stamina = max(0, self.stamina - (stamina_cost / 2))
             if self.stamina <= 0:
                 self.exhausted = True
 
+
     def update(self, dt):
         "Delta time es tiempo en segundos."
         
-        recover_rate = 10 * dt  # puntos por segundo (ajusta)
+        recover_rate = 10 * dt  # puntos por segundo 
 
         if self.exhausted:
             # Solo recupera hasta 30%
@@ -116,20 +111,18 @@ class Player:
                 self._pos_history.append((self.x, self.y))
 
     def draw_stamina(self, screen):
-        bar_w, bar_h = 120, 14   # tamaño de la barra
-        margin = 10              # margen desde los bordes
+        bar_w, bar_h = 120, 14   
+        margin = 10              
 
         x = screen.get_width() - bar_w - margin
         y = margin
 
         pygame.draw.rect(screen, (100, 100, 100), (x, y, bar_w, bar_h))
 
-        # parte proporcional
         fill_w = int(bar_w * (self.stamina / 100))
         color = (200, 50, 50) if self.exhausted else (50, 200, 50)
         pygame.draw.rect(screen, color, (x, y, fill_w, bar_h))
 
-        # borde
         pygame.draw.rect(screen, (255, 255, 255), (x, y, bar_w, bar_h), 2)
 
 
@@ -174,12 +167,8 @@ class Player:
         self._snapshot_timer = 0.0
 
     def undo_position(self):
-        """
-        Retrocede a la posición previa del historial.
-        Evita quedarse en el mismo punto si el último snapshot == posición actual.
-        """
         if len(self._pos_history) > 1:
-            # descarta el snapshot más reciente (pos actual o casi actual)
+            # Le hace pop a la posicion mas reciente
             self._pos_history.pop()
             x, y = self._pos_history[-1]
             self.x, self.y = x, y
@@ -207,18 +196,16 @@ class Player:
     def save_state(self) -> dict:
         """Devuelve un dict serializable con el estado actual del jugador."""
         return {
-            "ver": 1,  # por si luego cambias el formato
             "pos": [round(self.x, 3), round(self.y, 3)],
             "radius": int(self.radius),
             "stamina": int(self.stamina),
             "exhausted": bool(self.exhausted),
 
-            # --- historial de posiciones (ring buffer) ---
             "snapshots": {
                 "maxlen": self._pos_history.maxlen,
                 "every": float(self._snapshot_every),
                 "timer": float(self._snapshot_timer),
-                # Convertimos deque[tuple(x,y)] -> list[list[x,y]]
+                
                 "items": [[round(px, 3), round(py, 3)] for (px, py) in self._pos_history],
             },
         }
@@ -241,7 +228,6 @@ class Player:
             items = snaps.get("items", [[self.x, self.y]])
             self._pos_history = deque(( (float(px), float(py)) for px, py in items ), maxlen=maxlen)
 
-            # Asegura que haya al menos un punto
             if not self._pos_history:
                 self._pos_history.append((self.x, self.y))
 

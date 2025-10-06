@@ -5,24 +5,16 @@ from typing import Optional, Callable, Any, List
 JobT = Any
 
 class InventoryUI:
-    """
-    Vista del inventario:
-      - Fuente de datos: JobLogic (inyectada).
-      - Navegación: ↑/↓ (W/S)
-      - ENTER/SPACE: set current en JobLogic + cerrar (callback)
-      - Orden: P (prioridad), D (deadline)  [no modifica el orden en JobLogic, solo la vista]
-    """
 
     def __init__(self, job_logic, font: Optional[pygame.font.Font] = None) -> None:
         pygame.font.init()
         self.font = font or pygame.font.SysFont("Segoe UI", 16)
 
-        # Referencia a la lógica (single source of truth)
         self.job_logic = job_logic
 
         self.selected_index: int = 0
         self._sort_key: Optional[str] = "priority"   # "priority" | "deadline"
-        self._sort_desc: bool = True                 # prioridad: DESC
+        self._sort_desc: bool = True                 
         self.on_pick_job: Optional[Callable[[JobT], None]] = None
         self.on_close_inventory: Optional[Callable[[], None]] = None
 
@@ -39,7 +31,6 @@ class InventoryUI:
         self.col_row_sel_bd = (190, 205, 235)
         self.col_text_dim   = (55, 55, 60)
 
-        # Layout centrado
         screen = pygame.display.get_surface()
         if screen is None:
             scr_w, scr_h = 1280, 720
@@ -65,14 +56,12 @@ class InventoryUI:
             self.panel_rect.h - (self.header_h + self.footer_h + 2 * self.padding),
         )
 
-    # ---------- Callbacks ----------
     def set_on_pick_job(self, fn: Callable[[JobT], None]) -> None:
         self.on_pick_job = fn
 
     def set_on_close_inventory(self, fn: Callable[[], None]) -> None:
         self.on_close_inventory = fn
 
-    # ---------- Entrada ----------
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type != pygame.KEYDOWN:
             return
@@ -88,7 +77,6 @@ class InventoryUI:
             return
 
         if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE) and jobs_view:
-            # 1) Notificar job elegido y setear current en JobLogic
             job = jobs_view[self.selected_index]
             if callable(self.on_pick_job):
                 try:
@@ -100,7 +88,7 @@ class InventoryUI:
                     self.job_logic.setCurrentJob(str(getattr(job, "id", "")))
                 except Exception:
                     pass
-            # 2) Cerrar inventario
+                
             if callable(self.on_close_inventory):
                 try:
                     self.on_close_inventory()
@@ -108,7 +96,6 @@ class InventoryUI:
                     pass
             return
 
-        # Ordenamiento local (solo de la vista)
         if event.key == pygame.K_p:
             if self._sort_key != "priority":
                 self._sort_key = "priority"; self._sort_desc = True
@@ -123,17 +110,15 @@ class InventoryUI:
                 self._sort_desc = not self._sort_desc
             return
 
-    # ---------- Dibujo ----------
+    # Draws
     def draw(self, screen: pygame.Surface) -> None:
         r = self.panel_rect
         pygame.draw.rect(screen, self.col_bg_panel, r, border_radius=16)
         pygame.draw.rect(screen, self.col_bd_panel, r, width=1, border_radius=16)
 
-        # Header
         title = self.font.render("Inventario", True, self.col_text_title)
         screen.blit(title, (r.x + self.padding, r.y + self.padding))
 
-        # Pill de orden
         label_map = {"priority": "Prioridad", "deadline": "Deadline"}
         if self._sort_key in label_map:
             arrow = "↓" if self._sort_desc else "↑"
@@ -147,14 +132,11 @@ class InventoryUI:
             pygame.draw.rect(screen, self.col_pill_bd, pr, width=1, border_radius=10)
             screen.blit(pill_txt, (pr.x + pad, pr.y + pad))
 
-        # Separador
         y_sep = r.y + self.padding + self.header_h - 6
         pygame.draw.line(screen, self.col_sep, (r.x + self.padding, y_sep), (r.right - self.padding, y_sep), 1)
 
-        # Lista
         self._draw_jobs_list(screen)
 
-        # Footer
         foot_y = r.bottom - self.footer_h
         pygame.draw.line(screen, self.col_sep, (r.x + self.padding, foot_y), (r.right - self.footer_h, foot_y), 1)
         helps = "P: Prioridad  |  D: Deadline  |  ↑/↓: Navegar  |  ENTER: Seleccionar"
@@ -165,7 +147,6 @@ class InventoryUI:
         area = self.list_rect
         pygame.draw.rect(screen, self.col_list_bg, area, border_radius=10)
 
-        # Encabezados
         hdr_y = area.y + 6
         col_id_x     = area.x + 10
         col_pri_x    = area.x + int(area.w * 0.38)
@@ -180,7 +161,6 @@ class InventoryUI:
         screen.blit(T("Peso"),     (col_weight_x, hdr_y))
         screen.blit(T("Deadline"), (col_dead_x, hdr_y))
 
-        # Línea bajo header
         y = hdr_y + self.font.get_height() + 4
         pygame.draw.line(screen, (215, 220, 228), (area.x + 6, y), (area.right - 6, y), 1)
         y += 6
@@ -190,10 +170,8 @@ class InventoryUI:
             self.selected_index = 0
             return
 
-        # Clamp de selección
         self.selected_index = max(0, min(self.selected_index, len(jobs_view) - 1))
 
-        # Filas visibles
         max_rows = max(0, (area.bottom - y) // self.row_h)
         end_idx = min(len(jobs_view), max_rows)
 
@@ -201,17 +179,14 @@ class InventoryUI:
             job = jobs_view[i]
             row_rect = pygame.Rect(area.x + 4, y, area.w - 8, self.row_h - 2)
 
-            # seleccionado (solo resaltado azul; ya no hay verde)
             if i == self.selected_index:
                 pygame.draw.rect(screen, self.col_row_sel_bg, row_rect, border_radius=6)
                 pygame.draw.rect(screen, self.col_row_sel_bd, row_rect, width=1, border_radius=6)
 
-            # Columnas
             screen.blit(T(str(getattr(job, "id", "")), (25, 25, 30)), (area.x + 10, y))
             screen.blit(T(str(getattr(job, "priority", 0)), (35, 35, 40)), (col_pri_x, y))
             screen.blit(T(str(getattr(job, "weight", 0)),   (35, 35, 40)), (col_weight_x, y))
 
-            # Deadline robusto
             from datetime import datetime as _dt_type
             dline = None
             ds = getattr(job, "deadline_str", None)
@@ -234,8 +209,7 @@ class InventoryUI:
             y += self.row_h
 
     def _get_jobs_view(self) -> List[JobT]:
-        """Obtiene el inventario desde JobLogic y aplica un orden local (si procede)."""
-        jobs: List[JobT] = self.job_logic.getInventory()  # <- single source of truth
+        jobs: List[JobT] = self.job_logic.getInventory()  
         if not jobs:
             return jobs
 

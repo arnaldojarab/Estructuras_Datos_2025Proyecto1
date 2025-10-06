@@ -72,14 +72,13 @@ class Game:
         self.job_logic.reset()
 
         #8) UI: Inventario
-        self.inventory_ui = InventoryUI(self.job_logic)  # inyectamos la fuente de datos
+        self.inventory_ui = InventoryUI(self.job_logic) 
 
-        # ENTER: fija current en JobLogic
+        
         self.inventory_ui.set_on_pick_job(
             lambda job: self.job_logic.setCurrentJob(str(getattr(job, "id", "")))
         )
 
-        # Cerrar inventario y volver al juego
         self.inventory_ui.set_on_close_inventory(
             lambda: setattr(self, "state", GameState.PLAYING)
         )
@@ -87,8 +86,8 @@ class Game:
         # 9) Game Over Logic
         self.game_over = GameOverLogic(self.hud_font, self.small_font)
 
-        #10) SoundManager para reproducir sonidos jeje
-        pygame.mixer.set_num_channels(16)  # opcional, por si hay varios SFX
+        #10) SoundManager para reproducir sonidos 
+        pygame.mixer.set_num_channels(16)  
         self.sfx = SoundManager()    
 
         #11) Pausa Logic
@@ -209,14 +208,12 @@ class Game:
 
         # Deshacer posición con tecla C
         if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
-            # si tu undo_position() devuelve True cuando logró deshacer, úsalo
             try:
                 did_undo = self.player.undo_position()
             except Exception:
-                did_undo = False  # evita crashear si algo falla accidentalmente
+                did_undo = False  
 
             if did_undo is None or did_undo is True:
-                # Sonar trompeta con pequeño fade para evitar "click"
                 self.sfx.play("undo", fade_ms=20)
 
             return
@@ -302,33 +299,24 @@ class Game:
 
     # --------- Clima ---------
     def _update_weather(self, dt: float):
-        """Avanza el clima. Si tu WeatherManager usa su propio clock interno,
-        puedes ignorar dt; si no, pásalo adentro y ajusta WeatherManager.update(dt)."""
-        # En tu versión previa, llamabas self.weather.update() sin dt:
+
         self.weather.update(dt)
-        # Si más adelante migras a update(dt), cámbialo por:
     
     def current_speed(self):
         return self.player.get_speed(self.job_logic.getWeight()) * self.weather.current_multiplier()  * self.map.surface_weight(self.player.x, self.player.y) * self.job_logic.getRepSpeed() 
 
 
     def _inventory_handle_event(self, event):
-         # Cerrar sin seleccionar
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_e, pygame.K_ESCAPE):
             self.state = GameState.PLAYING
             return
-        # Todo lo demás (↑/↓, ENTER/SPACE, ordenamientos) lo atiende el UI
         self.inventory_ui.handle_event(event)
 
 
     def _inventory_update(self, dt):
         return
-        #self.inventory_ui.set_jobs(self.job_logic.getInventory(), keep_selection=True)
-        # Pasa stats al encabezado
 
     def _inventory_draw(self):
-        # Tu loop ya dibuja: fondo/mapa/jugador/estamina
-        # Aquí solo pintás el overlay del inventario
         self.inventory_ui.draw(self.screen)
 
     def get_score(self) -> float:
