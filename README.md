@@ -40,6 +40,7 @@ La lógica de los pedidos se divide en 3 archivos:
 - **inventory**: **Lista** de ids de los jobs que el jugador sí aceptó y debe entregar. Cuando se entregan, salen del inventario y se registran en el historial. Con la tecla **E** se puede entrar a una interfaz gráfica donde es posible ver y modificar el orden del inventario.
 
 ### Estructura de datos usada en player.py:
+**pos_history**:
 La estructura de datos usada para player fue una pila implementada mediante deque, esta cola se uso para almacenar las posiciones del jugador para poder hacer un deshacer o “undo( )” más adelante. Se uso una pila porque se requería devolver las últimas posiciones en las que estuvo y luego las primeras hasta llegar a la primera posición. 
 
 ## Mapa
@@ -63,7 +64,7 @@ La lógica del clima se divide en tres clases: WeatherManager, que maneja la ló
 
 ### Estructuras de datos usadas en WeatherVisuals:
 - **clouds**: Es una lista que almacena los objetos Cloud que están activos.
-**wind_gusts**: Es una lista que almacena datos sobre los efectos de las ráfagas de viento; cada ráfaga es otra lista de atributos: `[x, y, speed, length, thickness, phase, freq, amp]`.
+- **wind_gusts**: Es una lista que almacena datos sobre los efectos de las ráfagas de viento; cada ráfaga es otra lista de atributos: `[x, y, speed, length, thickness, phase, freq, amp]`.
 
 ## Game Over Menu
 
